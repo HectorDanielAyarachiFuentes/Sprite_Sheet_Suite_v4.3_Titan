@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Sheet Suite v4.3 "Titan"</title>
+    <!-- Librerías Externas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ================================================== -->
+    <!-- Metadatos Básicos y SEO -->
+    <meta name="description" content="Una suite de herramientas web profesional para cortar, previsualizar y exportar animaciones desde hojas de sprites (sprite sheets).">
+    <meta name="keywords" content="sprite sheet, spritesheet, animation, game development, pixel art, asset creation, css animation, gif">
+    <meta name="author" content="Héctor Daniel Ayarachi Fuentes">
+
+    <!-- Favicon SVG -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%231a1b26'/><rect x='2' y='2' width='5' height='5' fill='%2324283b'/><rect x='9' y='2' width='5' height='5' fill='%2324283b'/><rect x='2' y='9' width='5' height='5' fill='%2324283b'/><rect x='9' y='9' width='5' height='5' fill='%237aa2f7'/></svg>">
+
+    <!-- Metadatos para Open Graph (Facebook, Discord, etc.) -->
+    <meta property="og:title" content="Sprite Sheet Suite v4.3 'Titan'">
+    <meta property="og:description" content="Herramienta web todo en uno para cortar, previsualizar y exportar hojas de sprites.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://hectordanielayarachifuentes.github.io/Herramienta-de-Corte-de-Sprite-Sheets/">
+    <meta property="og:image" content="https://raw.githubusercontent.com/HectorDanielAyarachiFuentes/Herramienta-de-Corte-de-Sprite-Sheets/main/img-md/image.png">
+
+    <!-- Metadatos para Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sprite Sheet Suite v4.3 'Titan'">
+    <meta name="twitter:description" content="Herramienta web todo en uno para cortar, previsualizar y exportar hojas de sprites.">
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/HectorDanielAyarachiFuentes/Herramienta-de-Corte-de-Sprite-Sheets/main/img-md/image.png">
+    <!-- ================================================== -->
+
+</head>
+<body>
+
+    <div id="welcome-screen">
+        <div id="drop-zone">
+            <h2>Sprite Sheet Suite v4.3</h2>
+            <p>Arrastra y suelta tu imagen aquí o selecciónala</p>
+            <label for="image-loader" id="image-loader-label">Seleccionar Archivo</label>
+            <input type="file" id="image-loader" accept="image/*">
+        </div>
+    </div>
+
+    <div class="app-container" style="visibility: hidden;">
+        <div class="main-panel">
+            <div class="panel header-panel">
+                <div>
+                    <h1>Sprite Sheet Suite <span class="version">v4.3 Titan</span></h1>
+                    <p id="image-dimensions" style="margin: 5px 0 0 0;"></p>
+                </div>
+                <button id="change-image-button">Cambiar Imagen</button>
+            </div>
+            <div class="panel">
+                <h2>Edición de Frames</h2>
+                <div class="input-group">
+                    <button id="undo-button" class="icon-btn" disabled title="Deshacer (Ctrl+Z)">↩️</button>
+                    <button id="redo-button" class="icon-btn" disabled title="Rehacer (Ctrl+Y)">↪️</button>
+                    <button id="clear-button" disabled>Limpiar Todo</button>
+                </div>
+                 <details>
+                    <summary>Ajuste Manual</summary>
+                     <div style="padding: 10px 0;">
+                        <p class="help-text">
+                           - <b>Crear Frame:</b> Haz clic y arrastra en un área vacía.<br>
+                           - <b>Seleccionar/Mover:</b> Haz clic y arrastra un frame.<br>
+                           - <b>Redimensionar:</b> Arrastra los puntos de control de un frame seleccionado.<br>
+                           - <b>Eliminar Frame:</b> Selecciona un frame y presiona 'Supr' o 'Retroceso'.<br>
+                           - <b>Añadir/Quitar del Clip:</b> Haz doble clic en un sub-frame.
+                        </p>
+                    </div>
+                </details>
+                <details id="slicer-details" open>
+                    <summary>Divisiones Internas (Frame Seleccionado)</summary>
+                    <div style="padding: 10px 0;">
+                        <p class="help-text">
+                            Selecciona un frame para activar. Esto lo convertirá en un "Grupo".<br>
+                            - <b>Añadir:</b> Usa los botones para añadir líneas de división.<br>
+                            - <b>Mover Segmento (Alt + Arrastrar):</b> Mueve solo un segmento de línea vertical en una fila.<br>
+                            - <b>Mover Línea Completa:</b> Arrastra una línea para ajustarla globalmente.<br>
+                            - <b>Eliminar Segmento (Doble Clic):</b> Elimina un segmento de línea individual.<br>
+                            - <b>Resetear Segmento (Alt + Doble Clic):</b> Devuelve un segmento modificado a su posición global.<br>
+                            - <b>Eliminar Línea Completa (Ctrl + Doble Clic):</b> Elimina una línea vertical en todas las filas.
+                         </p>
+                         <div class="input-group">
+                            <button id="add-v-slice-button" disabled>+ Añadir Línea Vertical</button>
+                            <button id="add-h-slice-button" disabled>+ Añadir Línea Horizontal</button>
+                        </div>
+                    </div>
+                </details>
+                <details>
+                    <summary>Generación de Parrilla Global</summary>
+                    <div style="padding: 10px 0;">
+                        <p class="help-text">Genera una parrilla que cubre toda la imagen. Borrará los frames existentes.</p>
+                        <div class="input-group">
+                            <label>Filas:</label><input type="number" id="rows-input" value="2" min="1">
+                            <label>Columnas:</label><input type="number" id="cols-input" value="5" min="1">
+                            <button id="generate-grid-button" disabled>Generar por Parrilla</button>
+                        </div>
+                        <div class="input-group">
+                            <label>Ancho Celda:</label><input type="number" id="cell-w-input" value="64" min="1">
+                            <label>Alto Celda:</label><input type="number" id="cell-h-input" value="64" min="1">
+                            <button id="generate-by-size-button" disabled>Generar por Tamaño</button>
+                        </div>
+                    </div>
+                </details>
+            </div>
+            <div class="panel editor-area">
+                <div class="ruler-corner"></div> <canvas id="ruler-top"></canvas> <canvas id="ruler-left"></canvas>
+                <div id="image-container">
+                    <img id="image-display" src="" alt="Sprite sheet">
+                    <canvas id="measurement-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="resizer" class="resizer"></div>
+        
+        <div class="side-panel">
+            <div class="panel">
+                <h3>Historial de Proyectos</h3>
+                <ul id="project-history-list"></ul>
+            </div>
+            <div class="panel">
+                <h3>Previsualización</h3>
+                <canvas id="preview-canvas" width="150" height="150" style="background-color: var(--bg-dark); border: 1px solid var(--border-color); margin: 0 auto 10px; display: block; image-rendering: pixelated;"></canvas>
+                <div class="input-group" style="justify-content: center;">
+                    <button id="first-frame-button" class="icon-btn" disabled>⏮️</button>
+                    <button id="play-pause-button" class="icon-btn" disabled>▶️</button>
+                    <button id="last-frame-button" class="icon-btn" disabled>⏭️</button>
+                </div>
+                <div class="input-group" style="justify-content: center;">
+                    <label for="fps-slider">FPS: <span id="fps-value">12</span></label>
+                    <input type="range" id="fps-slider" min="1" max="60" value="12" style="width: 150px;" disabled>
+                </div>
+            </div>
+            <div class="panel">
+                <h3>Clips de Animación</h3>
+                <div class="input-group">
+                    <select id="clips-select"></select>
+                    <button id="new-clip-button" title="Nuevo Clip">+</button>
+                    <button id="rename-clip-button" title="Renombrar Clip">✏️</button>
+                    <button id="delete-clip-button" title="Eliminar Clip">🗑️</button>
+                </div>
+                <h3>Frames del Clip</h3>
+                <p class="help-text">La lista muestra todos los sub-frames disponibles. Haz doble clic en el editor visual para añadirlos/quitarlos.</p>
+                <div class="input-group" style="margin-bottom: 10px;">
+                    <button id="select-all-frames" class="small-action">Todos</button>
+                    <button id="deselect-all-frames" class="small-action">Ninguno</button>
+                </div>
+                <ul id="frames-list"></ul>
+            </div>
+            <div class="panel" id="export-panel">
+                <h3>Exportar</h3>
+                <details>
+                    <summary>Exportar Frames Individuales</summary>
+                    <div style="padding-top: 10px;">
+                        <button id="export-zip-button" disabled>Descargar Frames (ZIP)</button>
+                    </div>
+                </details>
+                <details>
+                    <summary>Exportar Clip a GIF</summary>
+                    <div style="padding-top: 10px;">
+                        <div class="input-group">
+                            <label>Tamaño Máx:</label><input type="number" id="max-gif-size" value="128" min="16">
+                        </div>
+                        <button id="export-gif-button" disabled>Descargar GIF</button>
+                    </div>
+                </details>
+                <details id="code-export-details">
+                    <summary>Exportar a Código</summary>
+                    <div style="padding-top: 10px;">
+                        <button id="export-code-button" disabled>Generar HTML/CSS</button>
+                        <div id="code-preview-container">
+                            <div class="code-editors">
+                                <div class="code-editor">
+                                    <div class="code-editor-header">
+                                        HTML
+                                        <button class="copy-button" data-target="html-code-output">Copiar</button>
+                                    </div>
+                                    <div class="code-editor-body">
+                                        <div class="line-numbers" id="html-line-numbers"></div>
+                                        <pre><code id="html-code-output"></code></pre>
+                                    </div>
+                                </div>
+                                <div class="code-editor">
+                                    <div class="code-editor-header">
+                                        CSS
+                                        <button class="copy-button" data-target="css-code-output">Copiar</button>
+                                    </div>
+                                    <div class="code-editor-body">
+                                        <div class="line-numbers" id="css-line-numbers"></div>
+                                        <pre><code id="css-code-output"></code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="live-preview-container">
+                                <iframe id="live-preview-iframe" title="Live Preview"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details>
+                    <summary>Exportar Datos a JSON</summary>
+                    <div style="padding-top: 10px;">
+                        <div class="input-group">
+                            <label>Formato:</label>
+                            <select id="json-format-select">
+                                <option value="default">Por Defecto</option>
+                                <option value="phaser3">Phaser 3</option>
+                                <option value="godot">Godot</option>
+                            </select>
+                        </div>
+                        <div class="code-editor">
+                            <div class="code-editor-header">
+                                JSON
+                                <button class="copy-button" data-target="json-output">Copiar</button>
+                            </div>
+                            <div class="code-editor-body">
+                                <div class="line-numbers" id="json-line-numbers"></div>
+                                <pre><code id="json-output"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+    <div id="toast"></div>
+
+    <footer class="app-footer">
+       <p>
+           <span>Creado por Héctor Daniel Ayarachi Fuentes</span>
+           <a href="https://github.com/HectorDanielAyarachiFuentes" target="_blank" rel="noopener noreferrer" title="GitHub">
+               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="GitHub icon">
+                   <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+               </svg>
+           </a>
+           <a href="https://codepen.io/HectorDanielAyarachiFuentes" target="_blank" rel="noopener noreferrer" title="CodePen">
+               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="CodePen icon">
+                   <path d="M24 8.32l-12 8.32-12-8.32v-3.64l12-8.32 12 8.32v3.64zm-12 11.36l-12-8.32v3.64l12 8.32 12-8.32v-3.64l-12 8.32z"></path>
+               </svg>
+           </a>
+       </p>
+    </footer>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+
