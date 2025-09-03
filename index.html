@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -47,6 +46,37 @@
     </div>
 
     <div class="app-container" style="visibility: hidden;">
+        <!-- PANEL IZQUIERDO: Jerarquía y Navegación -->
+        <div class="left-panel">
+             <div class="panel">
+                <h3>Historial de Proyectos</h3>
+                <ul id="project-history-list"></ul>
+            </div>
+             <div class="panel">
+                <h3>Clips de Animación</h3>
+                <div class="input-group">
+                    <select id="clips-select"></select>
+                    <button id="new-clip-button" class="icon-btn" title="Nuevo Clip">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    </button>
+                    <button id="rename-clip-button" class="icon-btn" title="Renombrar Clip">
+                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    </button>
+                    <button id="delete-clip-button" class="icon-btn" title="Eliminar Clip">
+                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </button>
+                </div>
+                <h3>Frames del Clip</h3>
+                <p class="help-text">La lista muestra todos los sub-frames disponibles. Haz doble clic en el editor visual para añadirlos/quitarlos.</p>
+                <div class="input-group" style="margin-bottom: 10px;">
+                    <button id="select-all-frames" class="small-action">Todos</button>
+                    <button id="deselect-all-frames" class="small-action">Ninguno</button>
+                </div>
+                <ul id="frames-list"></ul>
+            </div>
+        </div>
+
+        <!-- PANEL CENTRAL: Editor Principal -->
         <div class="main-panel">
             <div class="panel header-panel">
                 <div>
@@ -55,11 +85,51 @@
                 </div>
                 <button id="change-image-button">Cambiar Imagen</button>
             </div>
+            <div class="panel editor-area-container">
+                <div id="editor-toolbar">
+                    <button id="add-v-slice-button" class="ruler-btn" title="Añadir Línea Vertical" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M11 2h2v20h-2z"/></svg>
+                    </button>
+                    <button id="add-h-slice-button" class="ruler-btn" title="Añadir Línea Horizontal" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M2 11h20v2H2z"/></svg>
+                    </button>
+                    <button id="fullscreen-button" class="ruler-btn" title="Pantalla Completa (M)">
+                        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    </button>
+                </div>
+                <div class="editor-area">
+                    <div class="ruler-corner"></div>
+                    <canvas id="ruler-top"></canvas>
+                    <canvas id="ruler-left"></canvas>
+                    <div id="image-container">
+                        <img id="image-display" src="" alt="Sprite sheet">
+                        <canvas id="measurement-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL DERECHO: Propiedades y Acciones -->
+        <div class="side-panel">
+             <div class="panel">
+                <h3>Previsualización</h3>
+                <canvas id="preview-canvas" width="150" height="150" style="background-color: var(--bg-dark); border: 1px solid var(--border-color); margin: 0 auto 10px; display: block; image-rendering: pixelated;"></canvas>
+                <div class="input-group" style="justify-content: center;">
+                    <button id="first-frame-button" class="icon-btn" disabled>⏮️</button>
+                    <button id="play-pause-button" class="icon-btn" disabled>▶️</button>
+                    <button id="last-frame-button" class="icon-btn" disabled>⏭️</button>
+                </div>
+                <div class="input-group" style="justify-content: center;">
+                    <label for="fps-slider">FPS: <span id="fps-value">12</span></label>
+                    <input type="range" id="fps-slider" min="1" max="60" value="12" style="width: 150px;" disabled>
+                </div>
+            </div>
             <div class="panel">
-                <h2>Edición de Frames</h2>
+                <h3>Edición de Frames</h3>
                 <div class="input-group">
                     <button id="undo-button" class="icon-btn" disabled title="Deshacer (Ctrl+Z)">↩️</button>
                     <button id="redo-button" class="icon-btn" disabled title="Rehacer (Ctrl+Y)">↪️</button>
+                    <button id="lock-frames-button" class="icon-btn" title="Bloquear/Desbloquear Frame Principal (L)">🔓</button>
                     <button id="clear-button" disabled>Limpiar Todo</button>
                 </div>
                  <details>
@@ -78,18 +148,13 @@
                     <summary>Divisiones Internas (Frame Seleccionado)</summary>
                     <div style="padding: 10px 0;">
                         <p class="help-text">
-                            Selecciona un frame para activar. Esto lo convertirá en un "Grupo".<br>
-                            - <b>Añadir:</b> Usa los botones para añadir líneas de división.<br>
+                            Selecciona un frame para activar los botones de división en la esquina del editor.<br>
                             - <b>Mover Segmento (Alt + Arrastrar):</b> Mueve solo un segmento de línea vertical en una fila.<br>
                             - <b>Mover Línea Completa:</b> Arrastra una línea para ajustarla globalmente.<br>
                             - <b>Eliminar Segmento (Doble Clic):</b> Elimina un segmento de línea individual.<br>
                             - <b>Resetear Segmento (Alt + Doble Clic):</b> Devuelve un segmento modificado a su posición global.<br>
                             - <b>Eliminar Línea Completa (Ctrl + Doble Clic):</b> Elimina una línea vertical en todas las filas.
                          </p>
-                         <div class="input-group">
-                            <button id="add-v-slice-button" disabled>+ Añadir Línea Vertical</button>
-                            <button id="add-h-slice-button" disabled>+ Añadir Línea Horizontal</button>
-                        </div>
                     </div>
                 </details>
                 <details>
@@ -109,124 +174,83 @@
                     </div>
                 </details>
             </div>
-            <div class="panel editor-area">
-                <div class="ruler-corner"></div> <canvas id="ruler-top"></canvas> <canvas id="ruler-left"></canvas>
-                <div id="image-container">
-                    <img id="image-display" src="" alt="Sprite sheet">
-                    <canvas id="measurement-canvas"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div id="resizer" class="resizer"></div>
-        
-        <div class="side-panel">
-            <div class="panel">
-                <h3>Historial de Proyectos</h3>
-                <ul id="project-history-list"></ul>
-            </div>
-            <div class="panel">
-                <h3>Previsualización</h3>
-                <canvas id="preview-canvas" width="150" height="150" style="background-color: var(--bg-dark); border: 1px solid var(--border-color); margin: 0 auto 10px; display: block; image-rendering: pixelated;"></canvas>
-                <div class="input-group" style="justify-content: center;">
-                    <button id="first-frame-button" class="icon-btn" disabled>⏮️</button>
-                    <button id="play-pause-button" class="icon-btn" disabled>▶️</button>
-                    <button id="last-frame-button" class="icon-btn" disabled>⏭️</button>
-                </div>
-                <div class="input-group" style="justify-content: center;">
-                    <label for="fps-slider">FPS: <span id="fps-value">12</span></label>
-                    <input type="range" id="fps-slider" min="1" max="60" value="12" style="width: 150px;" disabled>
-                </div>
-            </div>
-            <div class="panel">
-                <h3>Clips de Animación</h3>
-                <div class="input-group">
-                    <select id="clips-select"></select>
-                    <button id="new-clip-button" title="Nuevo Clip">+</button>
-                    <button id="rename-clip-button" title="Renombrar Clip">✏️</button>
-                    <button id="delete-clip-button" title="Eliminar Clip">🗑️</button>
-                </div>
-                <h3>Frames del Clip</h3>
-                <p class="help-text">La lista muestra todos los sub-frames disponibles. Haz doble clic en el editor visual para añadirlos/quitarlos.</p>
-                <div class="input-group" style="margin-bottom: 10px;">
-                    <button id="select-all-frames" class="small-action">Todos</button>
-                    <button id="deselect-all-frames" class="small-action">Ninguno</button>
-                </div>
-                <ul id="frames-list"></ul>
-            </div>
             <div class="panel" id="export-panel">
                 <h3>Exportar</h3>
-                <details>
-                    <summary>Exportar Frames Individuales</summary>
-                    <div style="padding-top: 10px;">
-                        <button id="export-zip-button" disabled>Descargar Frames (ZIP)</button>
-                    </div>
-                </details>
-                <details>
-                    <summary>Exportar Clip a GIF</summary>
-                    <div style="padding-top: 10px;">
-                        <div class="input-group">
-                            <label>Tamaño Máx:</label><input type="number" id="max-gif-size" value="128" min="16">
+                <!-- INICIO: Contenedor añadido para corregir el layout -->
+                <div class="export-options">
+                    <details>
+                        <summary>Exportar Frames Individuales</summary>
+                        <div style="padding-top: 10px;">
+                            <button id="export-zip-button" disabled>Descargar Frames (ZIP)</button>
                         </div>
-                        <button id="export-gif-button" disabled>Descargar GIF</button>
-                    </div>
-                </details>
-                <details id="code-export-details">
-                    <summary>Exportar a Código</summary>
-                    <div style="padding-top: 10px;">
-                        <button id="export-code-button" disabled>Generar HTML/CSS</button>
-                        <div id="code-preview-container">
-                            <div class="code-editors">
-                                <div class="code-editor">
-                                    <div class="code-editor-header">
-                                        HTML
-                                        <button class="copy-button" data-target="html-code-output">Copiar</button>
+                    </details>
+                    <details>
+                        <summary>Exportar Clip a GIF</summary>
+                        <div style="padding-top: 10px;">
+                            <div class="input-group">
+                                <label>Tamaño Máx:</label><input type="number" id="max-gif-size" value="128" min="16">
+                            </div>
+                            <button id="export-gif-button" disabled>Descargar GIF</button>
+                        </div>
+                    </details>
+                    <details id="code-export-details">
+                        <summary>Exportar a Código</summary>
+                        <div style="padding-top: 10px;">
+                            <button id="export-code-button" disabled>Generar HTML/CSS</button>
+                            <div id="code-preview-container">
+                                <div class="code-editors">
+                                    <div class="code-editor">
+                                        <div class="code-editor-header">
+                                            HTML
+                                            <button class="copy-button" data-target="html-code-output">Copiar</button>
+                                        </div>
+                                        <div class="code-editor-body">
+                                            <div class="line-numbers" id="html-line-numbers"></div>
+                                            <pre><code id="html-code-output"></code></pre>
+                                        </div>
                                     </div>
-                                    <div class="code-editor-body">
-                                        <div class="line-numbers" id="html-line-numbers"></div>
-                                        <pre><code id="html-code-output"></code></pre>
+                                    <div class="code-editor">
+                                        <div class="code-editor-header">
+                                            CSS
+                                            <button class="copy-button" data-target="css-code-output">Copiar</button>
+                                        </div>
+                                        <div class="code-editor-body">
+                                            <div class="line-numbers" id="css-line-numbers"></div>
+                                            <pre><code id="css-code-output"></code></pre>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="code-editor">
-                                    <div class="code-editor-header">
-                                        CSS
-                                        <button class="copy-button" data-target="css-code-output">Copiar</button>
-                                    </div>
-                                    <div class="code-editor-body">
-                                        <div class="line-numbers" id="css-line-numbers"></div>
-                                        <pre><code id="css-code-output"></code></pre>
-                                    </div>
+                                <div class="live-preview-container">
+                                    <iframe id="live-preview-iframe" title="Live Preview"></iframe>
                                 </div>
                             </div>
-                            <div class="live-preview-container">
-                                <iframe id="live-preview-iframe" title="Live Preview"></iframe>
+                        </div>
+                    </details>
+                    <details>
+                        <summary>Exportar Datos a JSON</summary>
+                        <div style="padding-top: 10px;">
+                            <div class="input-group">
+                                <label>Formato:</label>
+                                <select id="json-format-select">
+                                    <option value="default">Por Defecto</option>
+                                    <option value="phaser3">Phaser 3</option>
+                                    <option value="godot">Godot</option>
+                                </select>
+                            </div>
+                            <div class="code-editor">
+                                <div class="code-editor-header">
+                                    JSON
+                                    <button class="copy-button" data-target="json-output">Copiar</button>
+                                </div>
+                                <div class="code-editor-body">
+                                    <div class="line-numbers" id="json-line-numbers"></div>
+                                    <pre><code id="json-output"></code></pre>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </details>
-                <details>
-                    <summary>Exportar Datos a JSON</summary>
-                    <div style="padding-top: 10px;">
-                        <div class="input-group">
-                            <label>Formato:</label>
-                            <select id="json-format-select">
-                                <option value="default">Por Defecto</option>
-                                <option value="phaser3">Phaser 3</option>
-                                <option value="godot">Godot</option>
-                            </select>
-                        </div>
-                        <div class="code-editor">
-                            <div class="code-editor-header">
-                                JSON
-                                <button class="copy-button" data-target="json-output">Copiar</button>
-                            </div>
-                            <div class="code-editor-body">
-                                <div class="line-numbers" id="json-line-numbers"></div>
-                                <pre><code id="json-output"></code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </details>
+                    </details>
+                </div>
+                <!-- FIN: Contenedor añadido -->
             </div>
         </div>
     </div>
@@ -251,4 +275,3 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
