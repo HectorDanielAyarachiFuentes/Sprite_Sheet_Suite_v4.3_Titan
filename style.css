@@ -54,6 +54,28 @@ p { margin: 0; }
 .app-title p { font-size: 11px; color: var(--ps-text-medium); }
 .main-actions { display: flex; align-items: center; gap: 10px; }
 
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--ps-bg-dark);
+    padding: 4px;
+    border-radius: 4px;
+    border: 1px solid var(--ps-border-dark);
+}
+.zoom-controls button {
+    padding: 2px 8px;
+    font-weight: bold;
+    min-width: 25px;
+}
+#zoom-display {
+    padding: 0 8px;
+    font-size: 11px;
+    color: var(--ps-text-medium);
+    min-width: 45px;
+    text-align: center;
+}
+
 /* --- Left Toolbar --- */
 .left-toolbar {
     background: var(--ps-bg-panel);
@@ -80,15 +102,40 @@ p { margin: 0; }
 #lock-frames-button.locked { background-color: var(--danger); }
 .left-toolbar .separator { height: 1px; width: 80%; background-color: var(--ps-border-light); margin: 5px 0; }
 
+.tool-btn.active {
+    background-color: var(--ps-accent-blue);
+    border-color: #0d46a9;
+}
+.tool-btn.active:hover {
+    background-color: #1a6ff0;
+}
+
 /* --- Workspace --- */
 .workspace { background-color: var(--ps-bg); display: flex; flex-direction: column; min-width: 0; padding: 10px; }
 .document-window { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--ps-border-dark); border-radius: 4px; }
 .document-tab { background-color: var(--ps-bg-panel-header); padding: 5px 10px; border-bottom: 1px solid var(--ps-border-dark); display: flex; justify-content: space-between; align-items: center; }
 .close-tab-btn { background: none; border: none; color: var(--ps-text-medium); cursor: pointer; font-size: 16px; padding: 0 5px; }
 .editor-area-container { background: var(--ps-bg); flex-grow: 1; padding: 0; min-height: 0; }
-.editor-area { display: grid; grid-template-columns: 30px auto; grid-template-rows: 30px auto; width: 100%; height: 100%; background-color: var(--ps-bg-dark); overflow: auto; }
-.ruler-corner { background-color: var(--ps-bg-panel); border-right: 1px solid var(--ps-border-light); border-bottom: 1px solid var(--ps-border-light); }
-#image-container { position: relative; width: fit-content; height: fit-content; }
+.editor-area {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    grid-template-rows: 30px 1fr;
+    width: 100%;
+    height: 100%;
+    background-color: var(--ps-bg-dark);
+    overflow: auto; /* IMPORTANTE: Esto añade los scrolls al lienzo */
+}
+.ruler-corner { position: sticky; top: 0; left: 0; z-index: 20; background-color: var(--ps-bg-panel); border-right: 1px solid var(--ps-border-light); border-bottom: 1px solid var(--ps-border-light); }
+#ruler-top { position: sticky; top: 0; z-index: 15; }
+#ruler-left { position: sticky; left: 0; z-index: 15; }
+#image-container { 
+    position: relative; 
+    width: fit-content; 
+    height: fit-content;
+    grid-column: 2;
+    grid-row: 2;
+    transform-origin: top left;
+}
 #image-display { display: block; }
 #measurement-canvas { position: absolute; top: 0; left: 0; z-index: 10; cursor: default; }
 
@@ -96,7 +143,7 @@ p { margin: 0; }
 .right-panel-stack { background: var(--ps-bg-panel); border-left: 1px solid var(--ps-border-dark); display: flex; flex-direction: column; overflow: hidden; }
 .panel-header-icons { background-color: var(--ps-bg-panel-header); padding: 5px; text-align: right; border-bottom: 1px solid var(--ps-border-dark); }
 .collapse-panels-btn { background: none; border: none; color: var(--ps-text-medium); font-size: 14px; cursor: pointer; }
-.panel-content { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+.panel-content { flex-grow: 1; overflow: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; } /* IMPORTANTE: Esto añade scrolls al panel lateral */
 .photoshop-ui.panels-collapsed .panel-content { display: none; }
 .photoshop-ui.panels-collapsed .panel-header-icons { text-align: center; }
 
@@ -139,7 +186,6 @@ select { width: 100%; flex-grow: 1; }
 .code-editor-header { background-color: var(--ps-bg-panel); padding: 5px 8px; font-size: 11px; color: var(--ps-text-medium); border-bottom: 1px solid var(--ps-border-dark); position: relative;}
 .copy-button { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); padding: 2px 5px; font-size: 10px; background-color: var(--ps-bg-dark); border-color: var(--ps-border-dark); }
 
-/* --- INICIO DEL CAMBIO --- */
 .code-editors {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -149,10 +195,9 @@ select { width: 100%; flex-grow: 1; }
 .code-editor-body {
     display: flex;
     min-height: 100px;
-    max-height: 200px; /* Un poco más alto ya que no están apilados */
+    max-height: 200px;
     overflow: auto;
 }
-/* --- FIN DEL CAMBIO --- */
 
 .line-numbers { padding: 8px 5px; font-family: var(--font-mono); color: var(--ps-text-medium); text-align: right; background-color: #222; user-select: none; }
 .code-editor pre { margin: 0; padding: 8px; flex-grow: 1; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; }
