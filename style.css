@@ -171,61 +171,24 @@ select { width: auto; flex-grow: 1; }
     min-height: 0;
     position: relative;
 }
+/* INICIO: Rediseño del layout de la esquina del editor */
 .editor-area { display: grid; grid-template-columns: 30px auto; grid-template-rows: 30px auto; width: 100%; background-color: var(--bg-dark); overflow: auto; }
-
-/* --- Barra de herramientas superpuesta del editor --- */
-#editor-toolbar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 30px;
-    height: 30px;
-    z-index: 15;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 1px;
-    background-color: var(--bg-panel);
-    padding: 1px;
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-}
-.ruler-btn {
-    flex-grow: 1;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 2px;
-}
-#add-v-slice-button { grid-column: 1 / 2; grid-row: 1 / 2; }
-#add-h-slice-button { grid-column: 2 / 3; grid-row: 1 / 2; }
-#fullscreen-button { grid-column: 1 / 3; grid-row: 2 / 3; padding: 2px; }
-
-.ruler-btn svg {
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
-}
-#fullscreen-button svg { width: 18px; height: 18px; }
-
-
 .ruler-corner {
     background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
 }
-#ruler-top, #ruler-left { background-color: var(--bg-panel); }
+/* FIN: Rediseño */
+#ruler-top { grid-column: 2 / 3; grid-row: 1 / 2; }
+#ruler-left { grid-column: 1 / 2; grid-row: 2 / 3; }
 #image-container { grid-area: 2 / 2 / 3 / 3; position: relative; width: fit-content; height: fit-content; }
 #image-display { display: block; }
 #measurement-canvas { position: absolute; top: 0; left: 0; z-index: 10; cursor: default; }
 
 /* --- Side Panel --- */
-.help-text {
-    font-size: 0.85em;
-    color: var(--text-secondary);
-    margin: -10px 0 10px 0;
-    font-style: italic;
-}
+.help-text { font-size: 0.85em; color: var(--text-secondary); margin: -10px 0 10px 0; font-style: italic; }
 #frames-list, #project-history-list { list-style-type: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; }
 #frames-list li, #project-history-list li { display: flex; align-items: center; gap: 8px; background-color: var(--bg-surface); padding: 8px; border-bottom: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.9em; transition: background-color 0.2s; }
 #frames-list li:last-child, #project-history-list li:last-child { border-bottom: none; }
@@ -240,31 +203,9 @@ select { width: auto; flex-grow: 1; }
 .delete-history-btn:hover { background-color: var(--danger); color: var(--bg-dark); }
 
 /* --- Code Export Professional Look --- */
-#export-panel {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    min-height: 0;
-}
-
-/* --- INICIO: Corrección del layout de exportación --- */
-.export-options {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Añade un espacio limpio entre cada sección de exportación */
-}
-/* ELIMINADO: Se quita la regla conflictiva que causaba la superposición */
-/* #code-export-details[open] { ... } */
-/* --- FIN: Corrección del layout de exportación --- */
-
-#code-preview-container {
-    display: none;
-    grid-template-columns: 2fr 1fr;
-    gap: 15px;
-    margin-top: 15px;
-    flex-grow: 1;
-    min-height: 0;
-}
+#export-panel { display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
+.export-options { display: flex; flex-direction: column; gap: 15px; }
+#code-preview-container { display: none; grid-template-columns: 2fr 1fr; gap: 15px; margin-top: 15px; flex-grow: 1; min-height: 0; }
 .code-editors { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .code-editor { background-color: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
 .code-editor-header { background-color: var(--bg-surface); padding: 8px 12px; font-family: var(--font-mono); font-size: 0.9em; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); position: relative; flex-shrink: 0; }
