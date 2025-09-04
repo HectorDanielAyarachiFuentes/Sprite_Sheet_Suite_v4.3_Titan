@@ -1,4 +1,4 @@
-# 🚀 Sprite Sheet Suite v3.9 "Phoenix"
+# 🚀 Sprite Sheet Suite v4.3 Titan"
 
 
 <!-- Reemplaza la URL de arriba con una captura de pantalla atractiva de tu herramienta -->
