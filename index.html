@@ -31,13 +31,21 @@
     <!-- Contenedor principal de la aplicación con el nuevo diseño -->
     <div class="photoshop-ui app-container" style="visibility: hidden;">
         
-        <!-- Barra de Opciones Superior (Contiene los controles originales del header) -->
+        <!-- Barra de Opciones Superior -->
         <header class="options-bar">
             <div class="app-title">
                 <h1>Sprite Sheet Suite <span class="version">v4.3</span></h1>
                 <p id="image-dimensions"></p>
             </div>
             <div class="main-actions">
+                <!-- INICIO DE NUEVOS CONTROLES DE ZOOM -->
+                <div class="zoom-controls">
+                    <button id="zoom-out-button" title="Alejar (Ctrl + -)">-</button>
+                    <span id="zoom-display">100%</span>
+                    <button id="zoom-in-button" title="Acercar (Ctrl + +)">+</button>
+                    <button id="zoom-fit-button" title="Ajustar a pantalla">Fit</button>
+                </div>
+                <!-- FIN DE NUEVOS CONTROLES DE ZOOM -->
                 <button id="change-image-button">Cambiar Imagen</button>
                 <button id="fullscreen-button" class="icon-btn" title="Pantalla Completa (M)">
                     <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
@@ -48,13 +56,23 @@
         <!-- Contenido Principal -->
         <div class="main-content">
 
-            <!-- Barra de Herramientas Izquierda (Con botones funcionales) -->
+            <!-- Barra de Herramientas Izquierda -->
             <aside class="left-toolbar">
                 <button id="undo-button" class="tool-btn" disabled title="Deshacer (Ctrl+Z)">
                     <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.38 11.23 17.29 8 12.5 8z"/></svg>
                 </button>
                 <button id="redo-button" class="tool-btn" disabled title="Rehacer (Ctrl+Y)">
                     <svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.79 0-8.88 3.23-10.13 7.5l-2.37-.78C.62 10.23 4.71 6 9.5 6c1.98 0 3.86.63 5.38 1.75L18 4v9h-9l3.4-3.4z"/></svg>
+                </button>
+                <div class="separator"></div>
+                <button id="select-tool-button" class="tool-btn active" title="Seleccionar/Mover (V)">
+                    <svg viewBox="0 0 24 24"><path d="M13.64,21.97C13.14,22.21 12.54,22 12.31,21.5L10.13,16.76L7.62,18.78C7.45,18.92 7.24,19 7,19A1,1 0 0,1 6,18V3A1,1 0 0,1 7,2C7.24,2 7.45,2.08 7.62,2.22L16.22,8.43L19.5,7.5A1,1 0 0,1 20.5,8.5L13.64,21.97Z"/></svg>
+                </button>
+                <button id="create-frame-tool-button" class="tool-btn" title="Crear Frame (C)">
+                     <svg viewBox="0 0 24 24"><path d="M5 3H3v2h2V3m0 4H3v2h2V7m0 4H3v2h2v-2m0 4H3v2h2v-2m4-12H7v2h2V3m0 16H7v2h2v-2m4-16h-2v2h2V3m0 16h-2v2h2v-2m4-16h-2v2h2V3m0 4h-2v2h2V7m0 8h-2v2h2v-2m0-4h-2v2h2v-2m4 8h-2v2h2v-2m0-12h-2v2h2V3m2 4h2V5h-2V7m0 4h2V9h-2v2m0 4h2v-2h-2v2m0 4h2v-2h-2v2Z"/></svg>
+                </button>
+                <button id="auto-detect-tool-button" class="tool-btn" title="Detección Automática de Sprites">
+                    <svg viewBox="0 0 24 24"><path d="M14.5,2C15.3,2 16,2.7 16,3.5V6.41L18.59,4L20,5.41L17.41,8H20.5C21.3,8 22,8.7 22,9.5C22,10.05 21.7,10.5 21.25,10.75L18.5,12L21.25,13.25C21.7,13.5 22,13.95 22,14.5C22,15.3 21.3,16 20.5,16H17.41L20,18.59L18.59,20L16,17.41V20.5C16,21.3 15.3,22 14.5,22C13.95,22 13.5,21.7 13.25,21.25L12,18.5L10.75,21.25C10.5,21.7 10.05,22 9.5,22C8.7,22 8,21.3 8,20.5V17.41L5.41,20L4,18.59L6.59,16H3.5C2.7,16 2,15.3 2,14.5C2,13.95 2.3,13.5 2.75,13.25L5.5,12L2.75,10.75C2.3,10.5 2,10.05 2,9.5C2,8.7 2.7,8 3.5,8H6.59L4,5.41L5.41,4L8,6.59V3.5C8,2.7 8.7,2 9.5,2C10.05,2 10.5,2.3 10.75,2.75L12,5.5L13.25,2.75C13.5,2.3 13.95,2 14.5,2Z" /></svg>
                 </button>
                 <div class="separator"></div>
                 <button id="lock-frames-button" class="tool-btn" title="Bloquear/Desbloquear Frame (L)">🔓</button>
@@ -71,7 +89,7 @@
                         <button class="close-tab-btn">×</button>
                     </div>
                     <div class="editor-area-container">
-                        <div class="editor-area">
+                        <div id="editor-area" class="editor-area">
                             <div class="ruler-corner"></div>
                             <canvas id="ruler-top"></canvas>
                             <canvas id="ruler-left"></canvas>
@@ -182,12 +200,10 @@
                             <details class="sub-panel"><summary>Frames Individuales</summary><button id="export-zip-button" disabled>Descargar Frames (ZIP)</button></details>
                             <details class="sub-panel"><summary>Clip a GIF</summary><div class="input-group"><label>Tamaño Máx:</label><input type="number" id="max-gif-size" value="128" min="16"></div><button id="export-gif-button" disabled>Descargar GIF</button></details>
                             <details class="sub-panel" id="code-export-details"><summary>A Código</summary>
-                                <!-- INICIO DEL CAMBIO -->
                                 <div class="input-group">
                                     <label for="export-scale-input">Escala:</label>
                                     <input type="number" id="export-scale-input" value="2" min="0.1" step="0.1">
                                 </div>
-                                <!-- FIN DEL CAMBIO -->
                                 <button id="export-code-button" disabled>Generar HTML/CSS</button>
                                 <div id="code-preview-container"><div class="code-editors"><div class="code-editor"><div class="code-editor-header">HTML <button class="copy-button" data-target="html-code-output">Copiar</button></div><div class="code-editor-body"><div class="line-numbers" id="html-line-numbers"></div><pre><code id="html-code-output"></code></pre></div></div><div class="code-editor"><div class="code-editor-header">CSS <button class="copy-button" data-target="css-code-output">Copiar</button></div><div class="code-editor-body"><div class="line-numbers" id="css-line-numbers"></div><pre><code id="css-code-output"></code></pre></div></div></div><div class="live-preview-container"><iframe id="live-preview-iframe" title="Live Preview"></iframe></div></div></details>
                             <details class="sub-panel"><summary>Datos a JSON</summary><div class="input-group"><label>Formato:</label><select id="json-format-select"><option value="default">Por Defecto</option><option value="phaser3">Phaser 3</option><option value="godot">Godot</option></select></div><div class="code-editor"><div class="code-editor-header">JSON <button class="copy-button" data-target="json-output">Copiar</button></div><div class="code-editor-body"><div class="line-numbers" id="json-line-numbers"></div><pre><code id="json-output"></code></pre></div></div></details>
