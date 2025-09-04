@@ -49,9 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const jsonLineNumbers = document.getElementById('json-line-numbers');
     const autoDetectButton = document.getElementById('auto-detect-button');
     const autoDetectToleranceInput = document.getElementById('auto-detect-tolerance');
-    // --- INICIO DEL CAMBIO ---
     const exportScaleInput = document.getElementById('export-scale-input');
-    // --- FIN DEL CAMBIO ---
 
 
     // --- App State ---
@@ -358,13 +356,12 @@ document.addEventListener('DOMContentLoaded', () => {
     exportZipButton.addEventListener('click', async () => { const allFrames=getFlattenedFrames(); if (allFrames.length === 0) return showToast('No hay frames para exportar.','warning'); showToast('Generando ZIP...', 'primary'); const zip = new JSZip(); const tempCanvas=document.createElement('canvas'), tempCtx=tempCanvas.getContext('2d'); for(const frame of allFrames) { tempCanvas.width = frame.rect.w; tempCanvas.height = frame.rect.h; tempCtx.drawImage(imageDisplay, frame.rect.x, frame.rect.y, frame.rect.w, frame.rect.h, 0, 0, frame.rect.w, frame.rect.h); const blob = await new Promise(res => tempCanvas.toBlob(res, 'image/png')); zip.file(`${frame.name || `frame_${frame.id}`}.png`, blob); } const content = await zip.generateAsync({type:"blob"}); const link = document.createElement('a'); link.href = URL.createObjectURL(content); link.download = `${currentFileName.split('.')[0]}.zip`; link.click(); URL.revokeObjectURL(link.href); });
     exportGifButton.addEventListener('click', () => { const animFrames=getAnimationFrames(); if (animFrames.length===0) return showToast("No hay frames en este clip para exportar.",'warning'); showToast("Generando GIF, por favor espera...",'primary'); const gif=new GIF({workers:2,quality:10,workerScript:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'}); const tempCanvas=document.createElement('canvas'),tempCtx=tempCanvas.getContext('2d'); const maxSize=parseInt(maxGifSizeInput.value)||128; animFrames.forEach(frame=>{const{x,y,w,h}=frame.rect; let dW=w,dH=h; if(w>maxSize||h>maxSize){if(w>h){dW=maxSize;dH=(h/w)*maxSize}else{dH=maxSize;dW=(w/h)*maxSize}} tempCanvas.width=Math.round(dW); tempCanvas.height=Math.round(dH); tempCtx.drawImage(imageDisplay,x,y,w,h,0,0,tempCanvas.width,tempCanvas.height); gif.addFrame(tempCanvas,{copy:true,delay:1000/animationState.fps});}); gif.on('finished',(blob)=>{const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`${currentFileName.split('.')[0]}_${getActiveClip().name}.gif`; link.click(); URL.revokeObjectURL(link.href);}); gif.render(); });
     
-    // --- INICIO DEL CAMBIO ---
     exportCodeButton.addEventListener('click', () => { 
         const animFrames = getAnimationFrames(); 
         if (animFrames.length === 0) return showToast("Selecciona al menos un frame en el clip.", 'warning'); 
         
-        const scale = parseFloat(exportScaleInput.value) || 2; // Leer el valor de escala
-        const { htmlCode, cssCode } = generateCssAnimationCode(animFrames, scale); // Pasar la escala a la función
+        const scale = parseFloat(exportScaleInput.value) || 2;
+        const { htmlCode, cssCode } = generateCssAnimationCode(animFrames, scale);
 
         htmlCodeOutput.innerHTML = highlightSyntax(htmlCode,'html'); 
         cssCodeOutput.innerHTML = highlightSyntax(cssCode,'css'); 
@@ -375,11 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
         codePreviewContainer.style.display = 'grid'; 
     });
     
-    function generateCssAnimationCode(animFrames, scale) { // La función ahora acepta 'scale'
+    function generateCssAnimationCode(animFrames, scale) {
         const firstFrame = animFrames[0].rect; 
         const frameCount = animFrames.length; 
         const duration = ((1 / animationState.fps) * frameCount).toFixed(2); 
-        // Se elimina 'const scale = 3;' de aquí
         const htmlCode = `<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>Animación de Sprite</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n    <div class="stage">\n        <div class="sprite"></div>\n    </div>\n\n</body>\n</html>`; 
         let keyframesSteps = animFrames.map((frame, index) => { 
             const { x, y, w, h } = frame.rect; 
@@ -391,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return { htmlCode, cssCode }; 
     }
-    // --- FIN DEL CAMBIO ---
 
     // --- Local Storage & History (Project Persistence) ---
     const getHistory = () => JSON.parse(localStorage.getItem('spriteSheetHistory') || '[]');
@@ -399,6 +394,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const addToHistory = () => { const id=Date.now(); const thumbCanvas=document.createElement('canvas'); const thumbCtx=thumbCanvas.getContext('2d'); const thumbSize=40; thumbCanvas.width=thumbSize; thumbCanvas.height=thumbSize; thumbCtx.drawImage(imageDisplay,0,0,thumbSize,thumbSize); const thumbSrc=thumbCanvas.toDataURL(); const historyEntry={id,name:currentFileName,thumb:thumbSrc}; let history=getHistory(); history=history.filter(item=>item.name!==currentFileName); history.unshift(historyEntry); if(history.length>5)history.pop(); saveHistory(history); const fullState={imageSrc:imageDisplay.src,fileName:currentFileName,frames,clips,activeClipId, historyStack, historyIndex}; localStorage.setItem(`history_${id}`,JSON.stringify(fullState)); updateHistoryPanel(); };
     const updateHistoryPanel = () => { const history = getHistory(); projectHistoryList.innerHTML = ''; if (history.length === 0) { projectHistoryList.innerHTML = `<li style="cursor: default; justify-content: center;">No hay proyectos guardados.</li>`; return; } history.forEach(item => { const li = document.createElement('li'); li.dataset.historyId = item.id; li.innerHTML = `<img src="${item.thumb}" class="history-thumb" alt="thumbnail"><span class="history-name">${item.name}</span><button class="delete-history-btn" title="Eliminar del historial">✖</button>`; projectHistoryList.appendChild(li); }); };
     projectHistoryList.addEventListener('click', (e) => { const li = e.target.closest('li'); if (!li) return; const id = li.dataset.historyId; if (e.target.classList.contains('delete-history-btn')) { e.stopPropagation(); let history=getHistory(); history=history.filter(item=>item.id!=id); saveHistory(history); localStorage.removeItem(`history_${id}`); updateHistoryPanel(); showToast('Proyecto eliminado del historial.','warning'); } else { const savedState=localStorage.getItem(`history_${id}`); if(savedState){ const state=JSON.parse(savedState); isReloadingFromStorage=true; currentFileName=state.fileName; frames=state.frames; clips=state.clips; activeClipId=state.activeClipId; historyStack = state.historyStack || []; historyIndex = state.historyIndex === undefined ? -1 : state.historyIndex; imageDisplay.src=state.imageSrc; } } });
+
+    // --- INICIO DEL CAMBIO: Lógica de Acordeón para Exportar ---
+    const exportPanel = document.getElementById('export-panel');
+    const exportSubPanels = exportPanel.querySelectorAll('.sub-panel');
+    exportSubPanels.forEach(panel => {
+        panel.addEventListener('toggle', (e) => {
+            if (e.target.open) {
+                // Cuando un panel se abre, cierra los demás
+                exportSubPanels.forEach(otherPanel => {
+                    if (otherPanel !== e.target && otherPanel.open) {
+                        otherPanel.open = false;
+                    }
+                });
+            }
+        });
+    });
+    // --- FIN DEL CAMBIO ---
 
     // Initial Load
     loadLastSession();
