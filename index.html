@@ -126,10 +126,10 @@
                         </div>
                     </details>
 
-                    <details class="panel">
+                    <details class="panel" open>
                         <summary>Generación y Ayuda</summary>
                         <div>
-                            <details class="sub-panel" open>
+                            <details class="sub-panel">
                                 <summary>Generación de Parrilla</summary>
                                 <p class="help-text">Borrará los frames existentes.</p>
                                 <div class="input-group"><label>Filas:</label><input type="number" id="rows-input" value="2" min="1"><label>Cols:</label><input type="number" id="cols-input" value="5" min="1"></div>
@@ -137,10 +137,30 @@
                                 <div class="input-group"><label>Ancho:</label><input type="number" id="cell-w-input" value="64" min="1"><label>Alto:</label><input type="number" id="cell-h-input" value="64" min="1"></div>
                                 <button id="generate-by-size-button" disabled>Generar por Tamaño</button>
                             </details>
-                             <details class="sub-panel">
-                                <summary>Ayuda de Edición</summary>
-                                <p class="help-text"><b>Crear:</b> Clic y arrastra en área vacía.<br><b>Mover:</b> Clic y arrastra un frame.<br><b>Redimensionar:</b> Arrastra los puntos de control.<br><b>Eliminar:</b> Selecciona y presiona 'Supr'.<br><b>Añadir/Quitar del Clip:</b> Doble clic en un sub-frame.</p>
+                            
+                            <!-- INICIO DE LA SECCIÓN DE AYUDA AÑADIDA -->
+                            <details class="sub-panel">
+                                <summary>Edición Manual de Frames</summary>
+                                <p class="help-text">
+                                    - <b>Crear Frame:</b> Haz clic y arrastra en un área vacía.<br>
+                                    - <b>Seleccionar/Mover:</b> Haz clic y arrastra un frame.<br>
+                                    - <b>Redimensionar:</b> Arrastra los puntos de control.<br>
+                                    - <b>Eliminar Frame:</b> Selecciona y presiona 'Supr'.<br>
+                                    - <b>Añadir/Quitar del Clip:</b> Doble clic en un sub-frame.
+                                </p>
                             </details>
+                             <details class="sub-panel">
+                                <summary>Divisiones Internas (Slicing)</summary>
+                                <p class="help-text">
+                                    Un frame se convierte en "Grupo" para poder dividirlo.<br>
+                                    - <b>Div. Horizontal:</b> Alt + Clic.<br>
+                                    - <b>Div. Vertical:</b> Ctrl + Clic.<br>
+                                    - <b>Mover Línea:</b> Arrastra una línea para ajustarla.<br>
+                                    - <b>Eliminar Línea:</b> Mantén pulsada una línea y presiona 'Supr' o 'Retroceso'.
+                                </p>
+                            </details>
+                            <!-- FIN DE LA SECCIÓN DE AYUDA AÑADIDA -->
+
                         </div>
                     </details>
 
