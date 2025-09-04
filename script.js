@@ -47,6 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const jsonOutput = document.getElementById('json-output');
     const jsonFormatSelect = document.getElementById('json-format-select');
     const jsonLineNumbers = document.getElementById('json-line-numbers');
+    const autoDetectButton = document.getElementById('auto-detect-button');
+    const autoDetectToleranceInput = document.getElementById('auto-detect-tolerance');
+    // --- INICIO DEL CAMBIO ---
+    const exportScaleInput = document.getElementById('export-scale-input');
+    // --- FIN DEL CAMBIO ---
+
 
     // --- App State ---
     let frames = [], clips = [], activeClipId = null;
@@ -204,6 +210,90 @@ document.addEventListener('DOMContentLoaded', () => {
     generateGridButton.addEventListener('click', () => { if(isLocked){ showToast('Desbloquea los frames primero (L)', 'warning'); return; } const r=parseInt(rowsInput.value), c=parseInt(colsInput.value); if(isNaN(r)||isNaN(c)||r<1||c<1)return; const w=canvas.width/c, h=canvas.height/r; const newFrame = { id: 0, name: `grid_group`, rect: { x: 0, y: 0, w: canvas.width, h: canvas.height }, type: 'group', vSlices: [], hSlices: [] }; for (let i = 1; i < c; i++) newFrame.vSlices.push({ id: Date.now()+i, globalX: i*w, rowOverrides: {} }); for (let i = 1; i < r; i++) newFrame.hSlices.push(i*h); frames = [newFrame]; clips = []; activeClipId = null; updateAll(true); });
     generateBySizeButton.addEventListener('click', () => { if(isLocked){ showToast('Desbloquea los frames primero (L)', 'warning'); return; } const w=parseInt(cellWInput.value), h=parseInt(cellHInput.value); if(isNaN(w)||isNaN(h)||w<1||h<1)return; const newFrame = { id: 0, name: `sized_group`, rect: { x: 0, y: 0, w: canvas.width, h: canvas.height }, type: 'group', vSlices: [], hSlices: [] }; for (let x=w; x<canvas.width; x+=w) newFrame.vSlices.push({ id: Date.now()+x, globalX: x, rowOverrides: {} }); for (let y=h; y<canvas.height; y+=h) newFrame.hSlices.push(y); frames = [newFrame]; clips = []; activeClipId = null; updateAll(true); });
     
+    // --- Automatic Sprite Detection ---
+    const detectSprites = async () => {
+        if (isLocked) { showToast('Desbloquea los frames primero (L)', 'warning'); return; }
+        if (!confirm('Esta acción borrará todos los frames existentes y buscará nuevos automáticamente. ¿Deseas continuar?')) return;
+
+        showToast('Detectando sprites... esto puede tardar un momento.', 'primary');
+        autoDetectButton.disabled = true;
+
+        setTimeout(() => {
+            try {
+                const tolerance = parseInt(autoDetectToleranceInput.value, 10);
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                const { naturalWidth: w, naturalHeight: h } = imageDisplay;
+                tempCanvas.width = w; tempCanvas.height = h;
+                tempCtx.drawImage(imageDisplay, 0, 0);
+
+                const imageData = tempCtx.getImageData(0, 0, w, h);
+                const data = imageData.data;
+                const visited = new Uint8Array(w * h);
+                const newFrames = [];
+
+                const bgR = data[0], bgG = data[1], bgB = data[2], bgA = data[3];
+
+                const isBackgroundColor = (index) => {
+                    const r = data[index], g = data[index + 1], b = data[index + 2], a = data[index + 3];
+                    if (a === 0) return true;
+                    if (bgA < 255 && a > 0) return false;
+                    const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+                    return diff <= tolerance;
+                };
+
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const i = (y * w + x);
+                        if (visited[i] || isBackgroundColor(i * 4)) continue;
+
+                        const queue = [[x, y]];
+                        visited[i] = 1;
+                        let minX = x, minY = y, maxX = x, maxY = y;
+
+                        while (queue.length > 0) {
+                            const [cx, cy] = queue.shift();
+                            minX = Math.min(minX, cx); minY = Math.min(minY, cy);
+                            maxX = Math.max(maxX, cx); maxY = Math.max(maxY, cy);
+                            
+                            const neighbors = [[cx, cy - 1], [cx, cy + 1], [cx - 1, cy], [cx + 1, cy]];
+                            for (const [nx, ny] of neighbors) {
+                                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                                    const ni = (ny * w + nx);
+                                    if (!visited[ni] && !isBackgroundColor(ni * 4)) {
+                                        visited[ni] = 1;
+                                        queue.push([nx, ny]);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        const newId = newFrames.length;
+                        newFrames.push({
+                            id: newId, name: `sprite_${newId}`,
+                            rect: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 },
+                            type: 'simple'
+                        });
+                    }
+                }
+
+                if (newFrames.length > 0) {
+                    frames = newFrames; clips = []; activeClipId = null; selectedFrameId = null;
+                    showToast(`¡Detección completada! Se encontraron ${newFrames.length} sprites.`, 'success');
+                    updateAll(true);
+                } else {
+                    showToast('No se encontraron sprites con la tolerancia actual.', 'warning');
+                }
+            } catch (error) {
+                console.error("Error during sprite detection:", error);
+                showToast('Ocurrió un error durante la detección.', 'danger');
+            } finally {
+                autoDetectButton.disabled = false;
+            }
+        }, 50);
+    };
+    autoDetectButton.addEventListener('click', detectSprites);
+
     // --- Clip, Animation ---
     const getActiveClip = () => clips.find(c => c.id === activeClipId);
     const createNewClip = (name) => { const newName = name || prompt("Nombre del nuevo clip:", `Clip ${clips.length + 1}`); if (!newName) return; clips.push({ id: Date.now(), name: newName, frameIds: [] }); activeClipId = clips[clips.length - 1].id; updateUI(); resetAnimation(); saveCurrentSession(); };
@@ -237,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
 
-        // --- INICIO: Lógica de eliminación de divisiones mejorada ---
         if ((e.key === 'Delete' || e.key === 'Backspace') && draggedSlice) {
             e.preventDefault();
             const frame = frames.find(f => f.id === selectedFrameId);
@@ -246,12 +335,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 frame.hSlices.splice(draggedSlice.index, 1);
             }
-            draggedSlice = null; // Previene que se elimine el frame completo después
+            draggedSlice = null; 
             saveLocalState();
             updateAll(false);
             return;
         }
-        // --- FIN: Lógica de eliminación de divisiones ---
 
         if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
         if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
@@ -269,8 +357,41 @@ document.addEventListener('DOMContentLoaded', () => {
     jsonFormatSelect.addEventListener('change', updateJsonOutput);
     exportZipButton.addEventListener('click', async () => { const allFrames=getFlattenedFrames(); if (allFrames.length === 0) return showToast('No hay frames para exportar.','warning'); showToast('Generando ZIP...', 'primary'); const zip = new JSZip(); const tempCanvas=document.createElement('canvas'), tempCtx=tempCanvas.getContext('2d'); for(const frame of allFrames) { tempCanvas.width = frame.rect.w; tempCanvas.height = frame.rect.h; tempCtx.drawImage(imageDisplay, frame.rect.x, frame.rect.y, frame.rect.w, frame.rect.h, 0, 0, frame.rect.w, frame.rect.h); const blob = await new Promise(res => tempCanvas.toBlob(res, 'image/png')); zip.file(`${frame.name || `frame_${frame.id}`}.png`, blob); } const content = await zip.generateAsync({type:"blob"}); const link = document.createElement('a'); link.href = URL.createObjectURL(content); link.download = `${currentFileName.split('.')[0]}.zip`; link.click(); URL.revokeObjectURL(link.href); });
     exportGifButton.addEventListener('click', () => { const animFrames=getAnimationFrames(); if (animFrames.length===0) return showToast("No hay frames en este clip para exportar.",'warning'); showToast("Generando GIF, por favor espera...",'primary'); const gif=new GIF({workers:2,quality:10,workerScript:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'}); const tempCanvas=document.createElement('canvas'),tempCtx=tempCanvas.getContext('2d'); const maxSize=parseInt(maxGifSizeInput.value)||128; animFrames.forEach(frame=>{const{x,y,w,h}=frame.rect; let dW=w,dH=h; if(w>maxSize||h>maxSize){if(w>h){dW=maxSize;dH=(h/w)*maxSize}else{dH=maxSize;dW=(w/h)*maxSize}} tempCanvas.width=Math.round(dW); tempCanvas.height=Math.round(dH); tempCtx.drawImage(imageDisplay,x,y,w,h,0,0,tempCanvas.width,tempCanvas.height); gif.addFrame(tempCanvas,{copy:true,delay:1000/animationState.fps});}); gif.on('finished',(blob)=>{const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`${currentFileName.split('.')[0]}_${getActiveClip().name}.gif`; link.click(); URL.revokeObjectURL(link.href);}); gif.render(); });
-    exportCodeButton.addEventListener('click', () => { const animFrames=getAnimationFrames(); if (animFrames.length===0) return showToast("Selecciona al menos un frame en el clip.", 'warning'); const {htmlCode,cssCode}=generateCssAnimationCode(animFrames); htmlCodeOutput.innerHTML=highlightSyntax(htmlCode,'html'); cssCodeOutput.innerHTML=highlightSyntax(cssCode,'css'); const genLines=(c)=>Array.from({length:c.split('\n').length},(_,i)=>`<span>${i+1}</span>`).join(''); htmlLineNumbers.innerHTML=genLines(htmlCode); cssLineNumbers.innerHTML=genLines(cssCode); livePreviewIframe.srcdoc=`<!DOCTYPE html><html><head><style>${cssCode}</style></head><body>${htmlCode.match(/<body>([\s\S]*)<\/body>/)[1]}</body></html>`; codePreviewContainer.style.display='grid'; });
-    function generateCssAnimationCode(animFrames) { const firstFrame = animFrames[0].rect; const frameCount = animFrames.length; const duration = ((1 / animationState.fps) * frameCount).toFixed(2); const scale = 3; const htmlCode = `<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>Animación de Sprite</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n    <div class="stage">\n        <div class="sprite"></div>\n    </div>\n\n</body>\n</html>`; let keyframesSteps = animFrames.map((frame, index) => { const { x, y, w, h } = frame.rect; const percentage = (index / frameCount) * 100; return `    ${percentage.toFixed(2)}% { width: ${w}px; height: ${h}px; background-position: -${x}px -${y}px; }`; }).join('\n'); const cssCode = `/* Estilos para la página de demostración */\nbody {\n    display: grid;\n    place-content: center;\n    min-height: 100vh;\n    background-color: #2c3e50;\n    margin: 0;\n}\n\n/* El "escenario" donde ocurre la animación */\n.stage {\n    padding: 2rem;\n    background-color: #1a252f;\n    border-radius: 8px;\n    border: 2px solid #55687a;\n    display: flex;\n    justify-content: center;\n    align-items: flex-end;\n    position: relative;\n    overflow: hidden;\n    min-height: 250px;\n    min-width: 250px;\n}\n\n/* El sprite con la animación */\n.sprite {\n    width: ${firstFrame.w}px;\n    height: ${firstFrame.h}px;\n    background-image: url('${currentFileName}');\n    \n    /* Mantiene los píxeles nítidos */\n    image-rendering: pixelated;\n    image-rendering: crisp-edges;\n\n    /* Escala el sprite para verlo mejor */\n    transform: scale(${scale});\n    transform-origin: bottom center;\n\n    /* Aplicación de la animación */\n    animation: play ${duration}s steps(1) infinite;\n}\n\n/* Definición de los pasos de la animación */\n@keyframes play {\n${keyframesSteps}\n    100% { width: ${firstFrame.w}px; height: ${firstFrame.h}px; background-position: -${firstFrame.x}px -${firstFrame.y}px; }\n}`; return { htmlCode, cssCode }; }
+    
+    // --- INICIO DEL CAMBIO ---
+    exportCodeButton.addEventListener('click', () => { 
+        const animFrames = getAnimationFrames(); 
+        if (animFrames.length === 0) return showToast("Selecciona al menos un frame en el clip.", 'warning'); 
+        
+        const scale = parseFloat(exportScaleInput.value) || 2; // Leer el valor de escala
+        const { htmlCode, cssCode } = generateCssAnimationCode(animFrames, scale); // Pasar la escala a la función
+
+        htmlCodeOutput.innerHTML = highlightSyntax(htmlCode,'html'); 
+        cssCodeOutput.innerHTML = highlightSyntax(cssCode,'css'); 
+        const genLines = (c) => Array.from({length:c.split('\n').length},(_,i)=>`<span>${i+1}</span>`).join(''); 
+        htmlLineNumbers.innerHTML = genLines(htmlCode); 
+        cssLineNumbers.innerHTML = genLines(cssCode); 
+        livePreviewIframe.srcdoc = `<!DOCTYPE html><html><head><style>${cssCode}</style></head><body>${htmlCode.match(/<body>([\s\S]*)<\/body>/)[1]}</body></html>`; 
+        codePreviewContainer.style.display = 'grid'; 
+    });
+    
+    function generateCssAnimationCode(animFrames, scale) { // La función ahora acepta 'scale'
+        const firstFrame = animFrames[0].rect; 
+        const frameCount = animFrames.length; 
+        const duration = ((1 / animationState.fps) * frameCount).toFixed(2); 
+        // Se elimina 'const scale = 3;' de aquí
+        const htmlCode = `<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>Animación de Sprite</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n    <div class="stage">\n        <div class="sprite"></div>\n    </div>\n\n</body>\n</html>`; 
+        let keyframesSteps = animFrames.map((frame, index) => { 
+            const { x, y, w, h } = frame.rect; 
+            const percentage = (index / frameCount) * 100; 
+            return `    ${percentage.toFixed(2)}% { width: ${w}px; height: ${h}px; background-position: -${x}px -${y}px; }`; 
+        }).join('\n'); 
+        
+        const cssCode = `/* Estilos para la página de demostración */\nbody {\n    display: grid;\n    place-content: center;\n    min-height: 100vh;\n    background-color: #2c3e50;\n    margin: 0;\n}\n\n/* El "escenario" donde ocurre la animación */\n.stage {\n    padding: 2rem;\n    background-color: #1a252f;\n    border-radius: 8px;\n    border: 2px solid #55687a;\n    display: flex;\n    justify-content: center;\n    align-items: flex-end;\n    position: relative;\n    overflow: hidden;\n    min-height: 250px;\n    min-width: 250px;\n}\n\n/* El sprite con la animación */\n.sprite {\n    width: ${firstFrame.w}px;\n    height: ${firstFrame.h}px;\n    background-image: url('${currentFileName}');\n    \n    /* Mantiene los píxeles nítidos */\n    image-rendering: pixelated;\n    image-rendering: crisp-edges;\n\n    /* Escala el sprite para verlo mejor */\n    transform: scale(${scale});\n    transform-origin: bottom center;\n\n    /* Aplicación de la animación */\n    animation: play ${duration}s steps(1) infinite;\n}\n\n/* Definición de los pasos de la animación */\n@keyframes play {\n${keyframesSteps}\n    100% { width: ${firstFrame.w}px; height: ${firstFrame.h}px; background-position: -${firstFrame.x}px -${firstFrame.y}px; }\n}`; 
+        
+        return { htmlCode, cssCode }; 
+    }
+    // --- FIN DEL CAMBIO ---
 
     // --- Local Storage & History (Project Persistence) ---
     const getHistory = () => JSON.parse(localStorage.getItem('spriteSheetHistory') || '[]');
