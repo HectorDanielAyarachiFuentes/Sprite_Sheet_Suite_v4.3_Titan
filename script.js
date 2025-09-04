@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyZoom = () => {
         imageContainer.style.transform = `scale(${zoomLevel})`;
         zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
-        drawAll(); // Redibujar todo para actualizar grosores y tamaños
+        drawAll(); 
     };
     const zoomIn = () => { zoomLevel = Math.min(zoomLevel * 1.25, 16); applyZoom(); };
     const zoomOut = () => { zoomLevel = Math.max(zoomLevel / 1.25, 0.1); applyZoom(); };
@@ -243,6 +243,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillText(subFrame.id, subFrame.rect.x + (4 / zoomLevel), subFrame.rect.y + (14 / zoomLevel));
             }
         });
+
+        if (isResizing && selectedFrameId !== null) {
+            const frame = frames.find(f => f.id === selectedFrameId);
+            if (frame) {
+                const { x, y, w, h } = frame.rect;
+                ctx.strokeStyle = 'rgba(122, 162, 247, 0.7)';
+                ctx.lineWidth = 1 / zoomLevel;
+                ctx.setLineDash([5 / zoomLevel, 3 / zoomLevel]);
+                ctx.beginPath();
+                if (resizeHandle.includes('t') || resizeHandle.includes('b')) {
+                    ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+                    ctx.moveTo(0, y + h); ctx.lineTo(canvas.width, y + h);
+                }
+                if (resizeHandle.includes('l') || resizeHandle.includes('r')) {
+                    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+                    ctx.moveTo(x + w, 0); ctx.lineTo(x + w, canvas.height);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
     
         if (isDrawing && newRect) {
             ctx.strokeStyle = 'var(--warning)';
@@ -331,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.addEventListener('mousedown', (e) => {
         const pos = getMousePos(e);
         startPos = pos;
+        
         const frameAtPosForSlicing = getFrameAtPos(pos);
         if (frameAtPosForSlicing && (e.altKey || e.ctrlKey || e.metaKey)) {
             e.preventDefault();
@@ -350,14 +372,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
     
-        const frameAtPos = getFrameAtPos(pos);
         if (activeTool === 'select') {
             resizeHandle = getHandleAtPos(startPos);
             draggedSlice = getSliceAtPos(startPos);
-    
-            if (resizeHandle) { isResizing = true; } 
-            else if (draggedSlice) { isDraggingSlice = true; } 
-            else if (frameAtPos) { 
+            const frameAtPos = getFrameAtPos(startPos);
+
+            if (resizeHandle) {
+                isResizing = true;
+            } else if (draggedSlice) {
+                isDraggingSlice = true;
+            } else if (frameAtPos) { 
                 if (selectedFrameId !== frameAtPos.id) { localHistoryStack = []; localHistoryIndex = -1; }
                 selectedFrameId = frameAtPos.id;
                 localHistoryFrameId = selectedFrameId;
@@ -365,9 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } else { 
                 selectedFrameId = null; 
             }
-        } else if (activeTool === 'create' && !frameAtPos) {
-            selectedFrameId = null; 
-            if(!isLocked) {
+        } else if (activeTool === 'create') {
+            const frameAtPos = getFrameAtPos(startPos);
+            if (!frameAtPos && !isLocked) {
+                selectedFrameId = null;
                 isDrawing = true; 
                 newRect = { x: startPos.x, y: startPos.y, w: 0, h: 0 };
             }
@@ -381,12 +406,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTool === 'select') {
             const handle = getHandleAtPos(pos); 
             const slice = getSliceAtPos(pos); 
-            if (handle) { 
-                if (handle.includes('n') || handle.includes('s')) canvas.style.cursor = 'ns-resize';
-                if (handle.includes('e') || handle.includes('w')) canvas.style.cursor = 'ew-resize';
-                if ((handle.includes('n') && handle.includes('w')) || (handle.includes('s') && handle.includes('e'))) canvas.style.cursor = 'nwse-resize';
-                if ((handle.includes('n') && handle.includes('e')) || (handle.includes('s') && handle.includes('w'))) canvas.style.cursor = 'nesw-resize';
-            } else if (slice) { 
+            if (handle && !isLocked) { 
+                if (handle.includes('t') || handle.includes('b')) canvas.style.cursor = 'ns-resize';
+                else if (handle.includes('l') || handle.includes('r')) canvas.style.cursor = 'ew-resize';
+            } else if (slice && !isLocked) { 
                 canvas.style.cursor = slice.axis === 'v' ? 'ew-resize' : 'ns-resize'; 
             } else if (getFrameAtPos(pos)) { 
                 canvas.style.cursor = isLocked ? 'not-allowed' : 'move'; 

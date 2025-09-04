@@ -123,7 +123,7 @@ p { margin: 0; }
     width: 100%;
     height: 100%;
     background-color: var(--ps-bg-dark);
-    overflow: auto; /* IMPORTANTE: Esto añade los scrolls al lienzo */
+    overflow: auto;
 }
 .ruler-corner { position: sticky; top: 0; left: 0; z-index: 20; background-color: var(--ps-bg-panel); border-right: 1px solid var(--ps-border-light); border-bottom: 1px solid var(--ps-border-light); }
 #ruler-top { position: sticky; top: 0; z-index: 15; }
@@ -139,11 +139,18 @@ p { margin: 0; }
 #image-display { display: block; }
 #measurement-canvas { position: absolute; top: 0; left: 0; z-index: 10; cursor: default; }
 
+/* --- INICIO NUEVO CURSOR --- */
+#measurement-canvas.cursor-eraser {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='black' stroke-width='1.5' d='M5.5 13.5l5-5l8 8l-5 5l-8-8zM4 15l-1.5 1.5L6 20l1.5-1.5L4 15zm12-9l1.5-1.5L21 8l-1.5 1.5L16 6z'/%3E%3Cpath fill='%23d1d1d1' d='M6.5 12.5l5-5l3 3l-5 5l-3-3z'/%3E%3C/svg%3E") 4 18, auto;
+}
+/* --- FIN NUEVO CURSOR --- */
+
+
 /* --- Right Panel Stack --- */
 .right-panel-stack { background: var(--ps-bg-panel); border-left: 1px solid var(--ps-border-dark); display: flex; flex-direction: column; overflow: hidden; }
 .panel-header-icons { background-color: var(--ps-bg-panel-header); padding: 5px; text-align: right; border-bottom: 1px solid var(--ps-border-dark); }
 .collapse-panels-btn { background: none; border: none; color: var(--ps-text-medium); font-size: 14px; cursor: pointer; }
-.panel-content { flex-grow: 1; overflow: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; } /* IMPORTANTE: Esto añade scrolls al panel lateral */
+.panel-content { flex-grow: 1; overflow: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
 .photoshop-ui.panels-collapsed .panel-content { display: none; }
 .photoshop-ui.panels-collapsed .panel-header-icons { text-align: center; }
 
