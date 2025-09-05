@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportGifButton = document.getElementById('export-gif-button');
     const maxGifSizeInput = document.getElementById('max-gif-size');
     const exportCodeButton = document.getElementById('export-code-button');
+    const codeExportDetails = document.getElementById('code-export-details'); // Para mostrar/ocultar la vista previa de código
     const codePreviewContainer = document.getElementById('code-preview-container');
     const htmlCodeOutput = document.getElementById('html-code-output');
     const cssCodeOutput = document.getElementById('css-code-output');
@@ -69,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedFrameId = null;
     let animationState = { isPlaying: false, fps: 12, currentFrameIndex: 0, lastTime: 0, animationFrameId: null };
     let currentFileName = "spritesheet.png";
-    let isReloadingFromStorage = false;
+    let isReloadingFromStorage = false; // Flag to differentiate new image load from history load
     let isLocked = false;
     let activeTool = 'select';
     let zoomLevel = 1.0;
@@ -83,10 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const HANDLE_SIZE = 8;
     const SLICE_HANDLE_WIDTH = 6;
 
-    // --- Local Storage & History ---
+    // --- Local Storage & Session Management ---
     const saveCurrentSession = () => {
         if (!imageDisplay.src || imageDisplay.src.startsWith('http')) return;
-        const state = { imageSrc: imageDisplay.src, fileName: currentFileName, frames, clips, activeClipId, historyStack, historyIndex };
+        const state = {
+            imageSrc: imageDisplay.src,
+            fileName: currentFileName,
+            frames,
+            clips,
+            activeClipId,
+            historyStack, // Save undo/redo history for the session
+            historyIndex
+        };
         localStorage.setItem('spriteSheetLastSession', JSON.stringify(state));
     };
 
@@ -94,23 +103,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedState = localStorage.getItem('spriteSheetLastSession');
         if (savedState) {
             const state = JSON.parse(savedState);
-            isReloadingFromStorage = true;
+            isReloadingFromStorage = true; // Set flag for imageDisplay.onload
             currentFileName = state.fileName;
-            // IMPORTANT: Ensure frames and clips are loaded from history entry if available
             frames = state.frames;
             clips = state.clips;
             activeClipId = state.activeClipId;
             historyStack = state.historyStack || [];
             historyIndex = state.historyIndex === undefined ? -1 : state.historyIndex;
-            imageDisplay.src = state.imageSrc;
+            imageDisplay.src = state.imageSrc; // This will trigger imageDisplay.onload
         }
     };
     
     // --- History (Undo/Redo) ---
     const saveGlobalState = () => {
         historyStack = historyStack.slice(0, historyIndex + 1);
-        // Store both frames and clips in history
-        historyStack.push(JSON.stringify({ frames, clips }));
+        historyStack.push(JSON.stringify({ frames, clips, activeClipId })); // Save activeClipId too
         historyIndex++;
         localHistoryStack = [];
         localHistoryIndex = -1;
@@ -147,8 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
             localHistoryIndex--;
             const frame = frames.find(f => f.id === localHistoryFrameId);
             const state = JSON.parse(localHistoryStack[localHistoryIndex]);
-            frame.hSlices = state.hSlices;
-            frame.vSlices = state.vSlices;
+            if (frame) { // Ensure frame still exists
+                frame.hSlices = state.hSlices;
+                frame.vSlices = state.vSlices;
+            }
             updateAll(false);
             saveCurrentSession();
         } else if (historyIndex > 0) {
@@ -162,8 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
             localHistoryIndex++;
             const frame = frames.find(f => f.id === localHistoryFrameId);
             const state = JSON.parse(localHistoryStack[localHistoryIndex]);
-            frame.hSlices = state.hSlices;
-            frame.vSlices = state.vSlices;
+            if (frame) { // Ensure frame still exists
+                frame.hSlices = state.hSlices;
+                frame.vSlices = state.vSlices;
+            }
             updateAll(false);
             saveCurrentSession();
         } else if (historyIndex < historyStack.length - 1) {
@@ -175,13 +186,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadState = (stateString) => {
         const state = JSON.parse(stateString);
         frames = state.frames;
-        clips = state.clips; // Ensure clips are also loaded from history
+        clips = state.clips;
+        activeClipId = state.activeClipId; // Restore activeClipId
         selectedFrameId = null;
         localHistoryStack = [];
         localHistoryIndex = -1;
         localHistoryFrameId = null;
-        updateAll(false);
-        saveCurrentSession();
+        updateAll(false); // Update UI without saving to history again
+        saveCurrentSession(); // Save the new session state
     };
     
     // --- Core Data Function: Flattening Frames ---
@@ -259,23 +271,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization and Image Loading ---
     const setControlsEnabled = (enabled) => { allControls.forEach(el => el.id !== 'image-loader' && el.parentElement.id !== 'drop-zone' && (el.disabled = !enabled)); updateHistoryButtons(); };
+    
     imageDisplay.onload = () => {
-        welcomeScreen.style.display = 'none'; appContainer.style.visibility = 'visible'; document.body.classList.add('app-loaded');
+        welcomeScreen.style.display = 'none';
+        appContainer.style.visibility = 'visible';
+        document.body.classList.add('app-loaded');
+
         const { naturalWidth: w, naturalHeight: h } = imageDisplay;
-        canvas.width = w; canvas.height = h;
-        rulerTop.width = editorArea.scrollWidth; rulerLeft.height = editorArea.scrollHeight;
-        rulerTop.height = 30; rulerLeft.width = 30;
+        canvas.width = w;
+        canvas.height = h;
+        rulerTop.width = editorArea.scrollWidth;
+        rulerLeft.height = editorArea.scrollHeight;
+        rulerTop.height = 30;
+        rulerLeft.width = 30;
         imageDimensionsP.innerHTML = `<strong>${currentFileName}:</strong> ${w}px &times; ${h}px`;
+
+        // CORRECCIÓN CRÍTICA: Solo inicializar frames/clips si NO estamos recargando desde el historial
         if (!isReloadingFromStorage) { 
-            historyIndex = -1; clearAll(true); addToHistory();
+            historyIndex = -1;
+            clearAll(true); // Clear frames/clips but don't save to history yet
+            addToHistory(); // Add this new project to the project history list
             zoomFit(); 
-        } else { 
-            updateAll(false);
+        } else {
+            // MEJORA: Si estamos recargando, el estado ya está en frames/clips/activeClipId
+            // Solo necesitamos actualizar la UI y aplicar el zoom.
+            updateAll(false); // Update UI based on restored state, but don't save global history again
             applyZoom();
+            isReloadingFromStorage = false; // Reset flag after loading is complete
         }
         setControlsEnabled(true);
     };
-    const handleFile = (file) => { if (!file || !file.type.startsWith('image/')) return; currentFileName = file.name; const reader = new FileReader(); reader.onload = (e) => { imageDisplay.src = e.target.result; isReloadingFromStorage = false; }; reader.readAsDataURL(file); };
+
+    const handleFile = (file) => {
+        if (!file || !file.type.startsWith('image/')) return;
+        currentFileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imageDisplay.src = e.target.result;
+            isReloadingFromStorage = false; // Ensure this is false for new file loads
+        };
+        reader.readAsDataURL(file);
+    };
+
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', (e) => e.currentTarget.classList.remove('dragover'));
     dropZone.addEventListener('drop', (e) => { e.preventDefault(); e.currentTarget.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
@@ -284,11 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Core Logic & UI Update ---
     const updateAll = (shouldSaveState = false) => {
-        if (shouldSaveState) saveGlobalState();
+        if (shouldSaveState) saveGlobalState(); // This saves to undo/redo history
         drawAll();
         updateUI();
         resetAnimation();
-        codePreviewContainer.style.display = 'none';
+        // codePreviewContainer.style.display = 'none'; // MEJORA: No ocultar automáticamente al actualizar
         updateHistoryButtons();
     };
 
@@ -398,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const scrollTop = editorArea.scrollTop;
     
         ctxTop.font = ctxLeft.font = '10px var(--font-sans)';
-        ctxTop.fillStyle = ctxLeft.fillStyle = 'var(--ps-text-medium)'; // Corrected variable
+        ctxTop.fillStyle = ctxLeft.fillStyle = 'var(--ps-text-medium)';
         
         let step = 10;
         if (zoomLevel < 0.5) step = 50;
@@ -461,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
     eraserToolButton.addEventListener('click', () => setActiveTool('eraser'));
     autoDetectToolButton.addEventListener('click', () => detectSprites());
 
-    // === MODIFICADO: Manejador de eventos 'mousedown' y 'mousemove' ===
+    // === Manejador de eventos 'mousedown' ===
     canvas.addEventListener('mousedown', (e) => {
         const pos = getMousePos(e);
         startPos = pos;
@@ -572,8 +609,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (handle) { 
                 if (handle.includes('t') || handle.includes('b')) canvas.style.cursor = 'ns-resize';
                 else if (handle.includes('l') || handle.includes('r')) canvas.style.cursor = 'ew-resize';
-                else if (handle.includes('d')) canvas.style.cursor = 'nwse-resize'; // Diagonal
-                else if (handle.includes('c')) canvas.style.cursor = 'nesw-resize'; // Diagonal
+                else if (handle.includes('d')) canvas.style.cursor = 'nwse-resize'; // Diagonal (if implemented)
+                else if (handle.includes('c')) canvas.style.cursor = 'nesw-resize'; // Diagonal (if implemented)
             } else if (slice) { 
                 canvas.style.cursor = slice.axis === 'v' ? 'ew-resize' : 'ns-resize'; 
             } else if (getFrameAtPos(pos)) { 
@@ -674,10 +711,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (subFrame) {
             const clip = getActiveClip();
-            if (!clip) return;
+            if (!clip) { showToast('Crea un clip de animación primero.', 'warning'); return; } // Feedback if no clip
             const idx = clip.frameIds.indexOf(subFrame.id);
-            if (idx > -1) clip.frameIds.splice(idx, 1);
-            else clip.frameIds.push(subFrame.id);
+            if (idx > -1) {
+                clip.frameIds.splice(idx, 1);
+                showToast(`Frame F${subFrame.id} quitado de "${clip.name}".`, 'info');
+            }
+            else {
+                clip.frameIds.push(subFrame.id);
+                showToast(`Frame F${subFrame.id} añadido a "${clip.name}".`, 'success');
+            }
             updateAll(false);
             saveCurrentSession();
         }
@@ -842,23 +885,27 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
         resetAnimation();
         saveCurrentSession();
+        showToast(`Clip "${newName}" creado.`, 'success');
     };
     newClipButton.addEventListener('click', () => createNewClip());
     renameClipButton.addEventListener('click', () => {
         const clip = getActiveClip();
         if (clip) {
             const newName = prompt("Nuevo nombre:", clip.name);
-            if(newName) { clip.name = newName; updateUI(); saveCurrentSession(); }
+            if(newName) { clip.name = newName; updateUI(); saveCurrentSession(); showToast(`Clip renombrado a "${newName}".`, 'success'); }
         }
     });
     deleteClipButton.addEventListener('click', () => {
+        if (clips.length === 0) { showToast("No hay clips para eliminar.", 'warning'); return; }
         if (clips.length <= 1) return showToast("No puedes eliminar el último clip.", 'warning');
-        if(confirm('¿Eliminar clip?')) {
+        if(confirm(`¿Eliminar el clip "${getActiveClip().name}"?`)) {
+            const deletedClipName = getActiveClip().name;
             clips = clips.filter(c => c.id !== activeClipId);
             activeClipId = clips[0]?.id || null;
             updateUI();
             resetAnimation();
             saveCurrentSession();
+            showToast(`Clip "${deletedClipName}" eliminado.`, 'info');
         }
     });
     clipsSelect.addEventListener('change', (e) => { activeClipId = parseInt(e.target.value); updateAll(false); saveCurrentSession(); });
@@ -880,12 +927,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (clips.length === 0 && getFlattenedFrames().length > 0) {
             createNewClip("Default"); // Auto-create default clip if none exist but frames do
         }
+        playPauseButton.disabled = getAnimationFrames().length === 0;
+        firstFrameButton.disabled = getAnimationFrames().length === 0;
+        lastFrameButton.disabled = getAnimationFrames().length === 0;
+        fpsSlider.disabled = getAnimationFrames().length === 0;
+        fpsValue.textContent = fpsSlider.value; // Asegurarse de que el valor se actualice
     };
     const updateFramesList = () => {
         framesList.innerHTML = '';
         const activeClip = getActiveClip();
         const allFrames = getFlattenedFrames();
-        if(allFrames.length === 0) {framesList.innerHTML = `<li>No hay frames definidos.</li>`; return;};
+        if(allFrames.length === 0) {framesList.innerHTML = `<li style="text-align:center; padding:10px;">No hay frames definidos.</li>`; return;};
         allFrames.forEach(f => {
             const li = document.createElement('li');
             const isChecked = activeClip?.frameIds.includes(f.id);
@@ -904,8 +956,24 @@ document.addEventListener('DOMContentLoaded', () => {
             saveCurrentSession();
         }
     });
-    selectAllFramesButton.addEventListener('click', () => { const clip = getActiveClip(); if (clip) { clip.frameIds = getFlattenedFrames().map(f => f.id); updateAll(false); saveCurrentSession();} });
-    deselectAllFramesButton.addEventListener('click', () => { const clip = getActiveClip(); if (clip) { clip.frameIds = []; updateAll(false); saveCurrentSession();} });
+    selectAllFramesButton.addEventListener('click', () => {
+        const clip = getActiveClip();
+        if (clip) {
+            clip.frameIds = getFlattenedFrames().map(f => f.id);
+            updateAll(false);
+            saveCurrentSession();
+            showToast(`Todos los frames añadidos a "${clip.name}".`, 'info');
+        }
+    });
+    deselectAllFramesButton.addEventListener('click', () => {
+        const clip = getActiveClip();
+        if (clip) {
+            clip.frameIds = [];
+            updateAll(false);
+            saveCurrentSession();
+            showToast(`Todos los frames quitados de "${clip.name}".`, 'info');
+        }
+    });
     const getAnimationFrames = () => { const clip = getActiveClip(); if (!clip) return []; const all = getFlattenedFrames(); return clip.frameIds.map(id => all.find(f => f.id === id)).filter(Boolean); };
     const resetAnimation = () => { if (animationState.isPlaying) toggleAnimation(); animationState.currentFrameIndex = 0; const animFrames = getAnimationFrames(); drawFrameInPreview(animFrames.length > 0 ? animFrames[0] : null); };
     const toggleAnimation = () => { animationState.isPlaying = !animationState.isPlaying; if (animationState.isPlaying && getAnimationFrames().length > 0) { playPauseButton.textContent = '⏸️'; animationState.lastTime = performance.now(); animationLoop(animationState.lastTime); } else { playPauseButton.textContent = '▶️'; cancelAnimationFrame(animationState.animationFrameId); } };
@@ -985,15 +1053,150 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Exportation and Project History ---
     document.body.addEventListener('click', (e) => { if (e.target.classList.contains('copy-button')) { const targetId = e.target.dataset.target; const pre = document.getElementById(targetId); navigator.clipboard.writeText(pre.textContent).then(() => showToast('¡Copiado al portapapeles!')); } });
-    const highlightSyntax = (str, lang) => { /* ... (código sin cambios) ... */ };
-    const updateJsonOutput = () => { /* ... (código sin cambios) ... */ };
+    const highlightSyntax = (str, lang) => {
+        const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        str=esc(str);
+        if (lang==='json') return str.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?)/g, (m) => /:$/.test(m) ? `<span class="token-key">${m.slice(0,-1)}</span>:` : `<span class="token-string">${m}</span>`).replace(/([{}[\](),:])/g, '<span class="token-punctuation">$&</span>');
+        if (lang==='html') return str.replace(/(&lt;\/?)([^&gt;\s]+)/g, `$1<span class="token-tag">$2</span>`).replace(/([a-z-]+)=(&quot;.*?&quot;)/g, `<span class="token-attr-name">$1</span>=<span class="token-attr-value">$2</span>`);
+        if (lang==='css') return str.replace(/\/\*[\s\S]*?\*\//g, '<span class="token-comment">$&</span>').replace(/([a-zA-Z-]+)(?=:)/g, '<span class="token-property">$&</span>').replace(/(body|h1|@keyframes|\.stage|\.sprite-container|\.ground)/g, '<span class="token-selector">$&</span>');
+        return str;
+    };
+    const updateJsonOutput = () => {
+        const format=jsonFormatSelect.value;
+        let out;
+        const framesData=getFlattenedFrames();
+        const meta={app:"Sprite Sheet Suite v4.3", image:currentFileName, size:{w:canvas.width,h:canvas.height}, clips:clips.map(c=>({name:c.name,frames:c.frameIds}))};
+        switch(format){
+            case 'phaser3':
+                out={frames:framesData.reduce((acc,f)=>{acc[f.name]={frame:f.rect,spriteSourceSize:{x:0,y:0,...f.rect},sourceSize:f.rect};return acc}, {}), meta};
+                break;
+            case 'godot':
+                out={frames:framesData.reduce((acc,f)=>{acc[f.name]={frame:f.rect,source_size:{w:f.rect.w,h:f.rect.h},sprite_source_size:{x:0,y:0,...f.rect}};return acc}, {}), meta};
+                break;
+            default:
+                out={meta, frames:framesData};
+                break;
+        }
+        const jsonString = JSON.stringify(out, null, 2);
+        jsonOutput.innerHTML = highlightSyntax(jsonString, 'json');
+        jsonLineNumbers.innerHTML = Array.from({length: jsonString.split('\n').length}, (_, i) => `<span>${i+1}</span>`).join('');
+    };
     jsonFormatSelect.addEventListener('change', updateJsonOutput);
-    exportZipButton.addEventListener('click', async () => { /* ... (código sin cambios) ... */ });
-    exportGifButton.addEventListener('click', () => { /* ... (código sin cambios) ... */ });
-    exportCodeButton.addEventListener('click', () => { /* ... (código sin cambios) ... */ });
-    function generateCssAnimationCode(animFrames, scale) { /* ... (código sin cambios) ... */ }
+
+    // Export Frames (ZIP)
+    exportZipButton.addEventListener('click', async () => {
+        const allFrames=getFlattenedFrames();
+        if (allFrames.length === 0) { showToast('No hay frames para exportar.', 'warning'); return; }
+        showLoader('Generando ZIP de frames...'); // Mostrar loader
+        
+        try {
+            const zip = new JSZip();
+            const tempCanvas=document.createElement('canvas'), tempCtx=tempCanvas.getContext('2d');
+            for(const frame of allFrames) {
+                tempCanvas.width = frame.rect.w;
+                tempCanvas.height = frame.rect.h;
+                tempCtx.drawImage(imageDisplay, frame.rect.x, frame.rect.y, frame.rect.w, frame.rect.h, 0, 0, frame.rect.w, frame.rect.h);
+                const blob = await new Promise(res => tempCanvas.toBlob(res, 'image/png'));
+                zip.file(`${frame.name || `frame_${frame.id}`}.png`, blob);
+            }
+            const content = await zip.generateAsync({type:"blob"});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `${currentFileName.split('.')[0]}_frames.zip`; // Nombre más descriptivo
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showToast('Frames exportados con éxito.', 'success');
+        } catch (error) {
+            console.error("Error exporting ZIP:", error);
+            showToast('Error al exportar frames ZIP.', 'danger');
+        } finally {
+            hideLoader(); // Ocultar loader
+        }
+    });
+
+    // Export Clip to GIF
+    exportGifButton.addEventListener('click', () => {
+        const animFrames=getAnimationFrames();
+        if (animFrames.length===0) { showToast("No hay frames en el clip activo para exportar.",'warning'); return; }
+        showLoader('Generando GIF...'); // Mostrar loader
+        
+        try {
+            const gif=new GIF({
+                workers: 2,
+                quality: 10,
+                workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js' // CORRECCIÓN: Usar gif.worker.js
+            });
+            const tempCanvas=document.createElement('canvas'),tempCtx=tempCanvas.getContext('2d');
+            const maxSize=parseInt(maxGifSizeInput.value)||128;
+            animFrames.forEach(frame=>{
+                const{x,y,w,h}=frame.rect;
+                let dW=w,dH=h;
+                if(w>maxSize||h>maxSize){if(w>h){dW=maxSize;dH=(h/w)*maxSize}else{dH=maxSize;dW=(w/h)*maxSize}}
+                tempCanvas.width=Math.round(dW);
+                tempCanvas.height=Math.round(dH);
+                tempCtx.drawImage(imageDisplay,x,y,w,h,0,0,tempCanvas.width,tempCanvas.height);
+                gif.addFrame(tempCanvas,{copy:true,delay:1000/animationState.fps});
+            });
+            gif.on('finished',(blob)=>{
+                const link=document.createElement('a');
+                link.href=URL.createObjectURL(blob);
+                link.download=`${currentFileName.split('.')[0]}_${getActiveClip().name}.gif`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                showToast('GIF exportado con éxito.', 'success');
+                hideLoader(); // Ocultar loader
+            });
+            gif.on('progress', (p) => {
+                showLoader(`Generando GIF: ${Math.round(p * 100)}%`); // Actualizar progreso
+            });
+            gif.render();
+        } catch (error) {
+            console.error("Error exporting GIF:", error);
+            showToast('Error al exportar GIF.', 'danger');
+            hideLoader(); // Ocultar loader
+        }
+    });
+
+    // Export Code (HTML/CSS)
+    exportCodeButton.addEventListener('click', () => {
+        const animFrames=getAnimationFrames();
+        if (animFrames.length===0) { showToast("Selecciona al menos un frame en el clip activo.", 'warning'); return; }
+        const scale = parseFloat(exportScaleInput.value) || 2;
+        const { htmlCode, cssCode } = generateCssAnimationCode(animFrames, scale);
+        htmlCodeOutput.innerHTML=highlightSyntax(htmlCode,'html');
+        cssCodeOutput.innerHTML=highlightSyntax(cssCode,'css');
+        const genLines=(c)=>Array.from({length:c.split('\n').length},(_,i)=>`<span>${i+1}</span>`).join('');
+        htmlLineNumbers.innerHTML=genLines(htmlCode);
+        cssLineNumbers.innerHTML=genLines(cssCode);
+        livePreviewIframe.srcdoc=`<!DOCTYPE html><html><head><style>${cssCode}</style></head><body>${htmlCode.match(/<body>([\s\S]*)<\/body>/)[1]}</body></html>`;
+        codePreviewContainer.style.display='grid'; // Mostrar el contenedor de código
+        showToast('Código HTML/CSS generado.', 'success');
+    });
+
+    // MEJORA: Ocultar la vista previa de código al cerrar el panel
+    codeExportDetails.addEventListener('toggle', () => {
+        if (!codeExportDetails.open) {
+            codePreviewContainer.style.display = 'none';
+        }
+    });
+
+    function generateCssAnimationCode(animFrames, scale) {
+        const firstFrame = animFrames[0].rect;
+        const frameCount = animFrames.length;
+        const duration = ((1 / animationState.fps) * frameCount).toFixed(2);
+        const htmlCode = `<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>Animación de Sprite</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n    <div class="stage">\n        <div class="sprite"></div>\n    </div>\n\n</body>\n</html>`;
+        let keyframesSteps = animFrames.map((frame, index) => {
+            const { x, y, w, h } = frame.rect;
+            const percentage = (index / frameCount) * 100;
+            return `    ${percentage.toFixed(2)}% { width: ${w}px; height: ${h}px; background-position: -${x}px -${y}px; }`;
+        }).join('\n');
+        const cssCode = `/* Estilos para la página de demostración */\nbody {\n    display: grid;\n    place-content: center;\n    min-height: 100vh;\n    background-color: #2c3e50;\n    margin: 0;\n}\n\n/* El "escenario" donde ocurre la animación */\n.stage {\n    padding: 2rem;\n    background-color: #1a252f;\n    border-radius: 8px;\n    border: 2px solid #55687a;\n    display: flex;\n    justify-content: center;\n    align-items: flex-end;\n    position: relative;\n    overflow: hidden;\n    min-height: 250px;\n    min-width: 250px;\n}\n\n/* El sprite con la animación */\n.sprite {\n    width: ${firstFrame.w}px;\n    height: ${firstFrame.h}px;\n    background-image: url('${currentFileName}');\n    \n    /* Mantiene los píxeles nítidos */\n    image-rendering: pixelated;\n    image-rendering: crisp-edges;\n\n    /* Escala el sprite para verlo mejor */\n    transform: scale(${scale});\n    transform-origin: bottom center;\n\n    /* Aplicación de la animación */\n    animation: play ${duration}s steps(1) infinite;\n}\n\n/* Definición de los pasos de la animación */\n@keyframes play {\n${keyframesSteps}\n    100% { width: ${firstFrame.w}px; height: ${firstFrame.h}px; background-position: -${firstFrame.x}px -${firstFrame.y}px; }\n}`;
+        return { htmlCode, cssCode };
+    }
+
     const getHistory = () => JSON.parse(localStorage.getItem('spriteSheetHistory') || '[]');
     const saveHistory = (history) => localStorage.setItem('spriteSheetHistory', JSON.stringify(history));
+
     const addToHistory = () => {
         const id=Date.now();
         const thumbCanvas=document.createElement('canvas');
@@ -1001,28 +1204,111 @@ document.addEventListener('DOMContentLoaded', () => {
         const thumbSize=40;
         thumbCanvas.width=thumbSize;
         thumbCanvas.height=thumbSize;
+        
+        // MEJORA: Asegurarse de que la imagen esté cargada antes de dibujar el thumbnail
         if (imageDisplay.naturalWidth > 0 && imageDisplay.naturalHeight > 0) {
             thumbCtx.drawImage(imageDisplay,0,0,imageDisplay.naturalWidth,imageDisplay.naturalHeight,0,0,thumbSize,thumbSize);
+        } else {
+            // Draw a placeholder if image not loaded
+            thumbCtx.fillStyle = 'var(--ps-bg-dark)';
+            thumbCtx.fillRect(0,0,thumbSize,thumbSize);
+            thumbCtx.fillStyle = 'var(--ps-text-medium)';
+            thumbCtx.font = '10px Arial';
+            thumbCtx.textAlign = 'center';
+            thumbCtx.textBaseline = 'middle';
+            thumbCtx.fillText('No img', thumbSize / 2, thumbSize / 2);
         }
         const thumbSrc=thumbCanvas.toDataURL();
         const historyEntry={id,name:currentFileName,thumb:thumbSrc};
         let history=getHistory();
-        history=history.filter(item=>item.name!==currentFileName); // Remove old entry if same file
+        history=history.filter(item=>item.name!==currentFileName); // Remove old entry if same file name
         history.unshift(historyEntry);
         if(history.length>5)history.pop(); // Keep only last 5 entries
         saveHistory(history);
-        const fullState={imageSrc:imageDisplay.src,fileName:currentFileName,frames,clips,activeClipId, historyStack, historyIndex};
-        localStorage.setItem(`history_${id}`,JSON.stringify(fullState));
+        
+        // Guardar el estado completo del proyecto, incluyendo el historial de undo/redo
+        const fullState={
+            imageSrc:imageDisplay.src,
+            fileName:currentFileName,
+            frames,
+            clips,
+            activeClipId,
+            historyStack, // Guardar el historial de undo/redo del proyecto
+            historyIndex  // Guardar el índice del historial
+        };
+        localStorage.setItem(`history_${id}`,JSON.stringify(fullState)); // Save full project state
         updateHistoryPanel();
     };
-    const updateHistoryPanel = () => { /* ... (código sin cambios) ... */ };
-    projectHistoryList.addEventListener('click', (e) => { /* ... (código sin cambios) ... */ });
+
+    const updateHistoryPanel = () => {
+        const history = getHistory();
+        projectHistoryList.innerHTML = '';
+        if (history.length === 0) {
+            projectHistoryList.innerHTML = `<li class="no-projects" style="cursor: default; justify-content: center; color: var(--ps-text-medium);">No hay proyectos guardados.</li>`;
+            return;
+        }
+        history.forEach(item => {
+            const li = document.createElement('li');
+            li.dataset.historyId = item.id;
+            li.innerHTML = `<img src="${item.thumb}" class="history-thumb" alt="thumbnail"><span class="history-name">${item.name}</span><button class="delete-history-btn" title="Eliminar del historial">✖</button>`;
+            projectHistoryList.appendChild(li);
+        });
+    };
+
+    projectHistoryList.addEventListener('click', (e) => {
+        const li = e.target.closest('li');
+        if (!li || li.classList.contains('no-projects')) return; // Evitar clics en el mensaje "No hay proyectos"
+        const id = li.dataset.historyId;
+
+        if (e.target.classList.contains('delete-history-btn')) {
+            e.stopPropagation(); // Prevent loading if delete button is clicked
+            if (confirm('¿Estás seguro de que quieres eliminar este proyecto del historial?')) {
+                let history=getHistory();
+                history=history.filter(item=>item.id!=id);
+                saveHistory(history);
+                localStorage.removeItem(`history_${id}`); // Remove full project data
+                updateHistoryPanel();
+                showToast('Proyecto eliminado del historial.','info');
+            }
+        } else {
+            // Load project logic
+            const savedState = localStorage.getItem(`history_${id}`);
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                isReloadingFromStorage = true; // Set flag for imageDisplay.onload
+                currentFileName = state.fileName;
+                frames = state.frames;
+                clips = state.clips;
+                activeClipId = state.activeClipId;
+                historyStack = state.historyStack || []; // Restore project's undo/redo history
+                historyIndex = state.historyIndex === undefined ? -1 : state.historyIndex; // Restore its index
+
+                // Setting imageDisplay.src last will trigger its onload event,
+                // which then calls updateAll(false) to refresh the UI with the restored state.
+                imageDisplay.src = state.imageSrc;
+                showToast(`Proyecto "${currentFileName}" cargado.`, 'success');
+            } else {
+                showToast('No se pudo cargar el proyecto. Archivo de datos no encontrado.', 'danger');
+            }
+        }
+    });
+
     const exportPanel = document.getElementById('export-panel');
     const exportSubPanels = exportPanel.querySelectorAll('.sub-panel');
-    exportSubPanels.forEach(panel => { /* ... (código sin cambios) ... */ });
+    exportSubPanels.forEach(panel => {
+        panel.addEventListener('toggle', (e) => {
+            if (e.target.open) {
+                exportSubPanels.forEach(otherPanel => {
+                    if (otherPanel !== e.target && otherPanel.open) {
+                        otherPanel.open = false;
+                    }
+                });
+            }
+        });
+    });
 
     // Initial Load
-    loadLastSession();
-    updateHistoryPanel();
-    setControlsEnabled(false);
+    loadLastSession(); // Tries to load the last working session
+    updateHistoryPanel(); // Populates the project history list
+    setControlsEnabled(false); // Controls disabled until an image is loaded
 });
