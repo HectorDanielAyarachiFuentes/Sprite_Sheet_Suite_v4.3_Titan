@@ -807,8 +807,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 const visited = new Uint8Array(w * h);
                 const newFrames = [];
 
-                // Determine background color from top-left pixel
-                const bgR = data[0], bgG = data[1], bgB = data[2], bgA = data[3];
+                // Improved background color detection - analyze corners and edges
+                const bgColors = [];
+                const corners = [[0, 0], [w-1, 0], [0, h-1], [w-1, h-1]];
+                corners.forEach(([x, y]) => {
+                    const i = (y * w + x) * 4;
+                    bgColors.push([data[i], data[i+1], data[i+2], data[i+3]]);
+                });
+
+                // Also sample edges
+                for (let x = 0; x < w; x += Math.max(1, Math.floor(w/10))) {
+                    const i = x * 4;
+                    bgColors.push([data[i], data[i+1], data[i+2], data[i+3]]);
+                    const bottomI = ((h-1) * w + x) * 4;
+                    bgColors.push([data[bottomI], data[bottomI+1], data[bottomI+2], data[bottomI+3]]);
+                }
+                for (let y = 0; y < h; y += Math.max(1, Math.floor(h/10))) {
+                    const i = (y * w) * 4;
+                    bgColors.push([data[i], data[i+1], data[i+2], data[i+3]]);
+                    const rightI = (y * w + w - 1) * 4;
+                    bgColors.push([data[rightI], data[rightI+1], data[rightI+2], data[rightI+3]]);
+                }
+
+                // Find most common background color
+                const colorCounts = {};
+                bgColors.forEach(color => {
+                    const key = color.join(',');
+                    colorCounts[key] = (colorCounts[key] || 0) + 1;
+                });
+                const mostCommonColor = Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b).split(',').map(Number);
+                const [bgR, bgG, bgB, bgA] = mostCommonColor;
 
                 const isBackgroundColor = (index) => {
                     const r = data[index], g = data[index + 1], b = data[index + 2], a = data[index + 3];
@@ -818,6 +846,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return diff <= tolerance;
                 };
 
+                // Minimum sprite size (to filter noise)
+                const minSpriteSize = Math.max(4, Math.min(w, h) / 100);
+
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
                         const i = (y * w + x);
@@ -826,32 +857,50 @@ document.addEventListener('DOMContentLoaded', () => {
                         const queue = [[x, y]];
                         visited[i] = 1;
                         let minX = x, minY = y, maxX = x, maxY = y;
+                        let pixelCount = 1;
 
                         while (queue.length > 0) {
                             const [cx, cy] = queue.shift();
                             minX = Math.min(minX, cx); minY = Math.min(minY, cy);
                             maxX = Math.max(maxX, cx); maxY = Math.max(maxY, cy);
-                            
-                            const neighbors = [[cx, cy - 1], [cx, cy + 1], [cx - 1, cy], [cx + 1, cy]]; // 4-way connectivity
+
+                            // 8-way connectivity for better detection
+                            const neighbors = [
+                                [cx, cy - 1], [cx, cy + 1], [cx - 1, cy], [cx + 1, cy],
+                                [cx - 1, cy - 1], [cx + 1, cy - 1], [cx - 1, cy + 1], [cx + 1, cy + 1]
+                            ];
                             for (const [nx, ny] of neighbors) {
                                 if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
                                     const ni = (ny * w + nx);
                                     if (!visited[ni] && !isBackgroundColor(ni * 4)) {
                                         visited[ni] = 1;
                                         queue.push([nx, ny]);
+                                        pixelCount++;
                                     }
                                 }
                             }
                         }
-                        
-                        const newId = newFrames.length;
-                        newFrames.push({
-                            id: newId, name: `sprite_${newId}`,
-                            rect: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 },
-                            type: 'simple'
-                        });
+
+                        const spriteW = maxX - minX + 1;
+                        const spriteH = maxY - minY + 1;
+
+                        // Filter out sprites that are too small or too large
+                        if (pixelCount >= minSpriteSize && spriteW <= w * 0.9 && spriteH <= h * 0.9) {
+                            const newId = newFrames.length;
+                            newFrames.push({
+                                id: newId, name: `sprite_${newId}`,
+                                rect: { x: minX, y: minY, w: spriteW, h: spriteH },
+                                type: 'simple'
+                            });
+                        }
                     }
                 }
+
+                // Sort frames by position (left to right, top to bottom)
+                newFrames.sort((a, b) => {
+                    if (a.rect.y !== b.rect.y) return a.rect.y - b.rect.y;
+                    return a.rect.x - b.rect.x;
+                });
 
                 if (newFrames.length > 0) {
                     frames = newFrames;
